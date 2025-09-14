@@ -25,9 +25,27 @@ if %errorlevel% neq 0 (
     exit /b 1
 )
 
-echo Node.js found: 
-node --version
-npm --version
+echo Node.js found and working!
+echo.
+
+REM Check if pnpm is installed
+echo Checking for pnpm installation...
+where pnpm >nul 2>&1
+echo test
+if %errorlevel% neq 0 (
+    echo pnpm not found, installing pnpm globally...
+    npm install -g pnpm
+    if %errorlevel% neq 0 (
+        echo Error: Failed to install pnpm
+        echo Please install pnpm manually: npm install -g pnpm
+        pause
+        exit /b 1
+    )
+    echo pnpm installed successfully!
+)
+
+echo pnpm found and working!
+echo.
 
 REM Create virtual environment if it doesn't exist
 if not exist "myvenv" (
@@ -82,6 +100,36 @@ if %errorlevel% neq 0 (
     exit /b 1
 )
 
+REM Install Django REST Framework
+echo.
+echo Installing djangorestframework...
+pip install djangorestframework
+if %errorlevel% neq 0 (
+    echo Error: Failed to install djangorestframework
+    pause
+    exit /b 1
+)
+
+REM Install markdown for DRF
+echo.
+echo Installing markdown...
+pip install markdown
+if %errorlevel% neq 0 (
+    echo Error: Failed to install markdown
+    pause
+    exit /b 1
+)
+
+REM Install django-filter for DRF
+echo.
+echo Installing django-filter...
+pip install django-filter
+if %errorlevel% neq 0 (
+    echo Error: Failed to install django-filter
+    pause
+    exit /b 1
+)
+
 echo.
 echo Backend Python packages installed successfully!
 echo.
@@ -116,16 +164,13 @@ if exist "package.json" (
     echo Installing packages with pnpm...
     pnpm install
     if %errorlevel% neq 0 (
-        echo pnpm failed, trying with npm...
-        npm install
-        if %errorlevel% neq 0 (
-            echo Error: Failed to install frontend dependencies
-            cd ..
-            pause
-            exit /b 1
-        )
+        echo Error: Failed to install frontend dependencies with pnpm
+        echo Please check your pnpm installation or network connection
+        cd ..
+        pause
+        exit /b 1
     )
-    echo Frontend dependencies installed successfully!
+    echo Frontend dependencies installed successfully with pnpm!
 ) else (
     echo Error: package.json not found in frontend directory
     cd ..

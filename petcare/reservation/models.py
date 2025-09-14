@@ -41,11 +41,18 @@ class Vaccine(models.Model):
 
 
 class Pet(models.Model):
+    class PetGender(models.Choices):
+        MALE = "Male"
+        FEMALE = "Female"
     user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='pets')
     name = models.CharField(max_length=100)
+    gender = models.CharField(max_length=10, choices=PetGender.choices)
     breed = models.CharField(max_length=100)
     color = models.CharField(max_length=50)
     allergic = models.TextField(blank=True, null=True)
+    marks = models.TextField(blank=True, null=True) # ลักษณะเด่น
+    chronic_conditions = models.TextField(blank=True, null=True) # โรคประจำตัว
+    neutered_status = models.BooleanField(default=False)
     image_key = models.CharField(max_length=255, blank=True, null=True)
     birth_date = models.DateField()
     vaccines = models.ManyToManyField(Vaccine, through='Vaccinated', related_name='pets')

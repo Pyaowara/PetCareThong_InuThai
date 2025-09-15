@@ -1,7 +1,7 @@
 from django.db import models
 from django.contrib.auth.hashers import make_password, check_password
 from datetime import datetime
-
+from django.utils import timezone
 
 class User(models.Model):
     ROLE_CHOICES = (
@@ -46,7 +46,7 @@ class Pet(models.Model):
         FEMALE = "Female"
     user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='pets')
     name = models.CharField(max_length=100)
-    gender = models.CharField(max_length=10, choices=PetGender.choices)
+    gender = models.CharField(max_length=10, choices=PetGender.choices, default=PetGender.MALE)
     breed = models.CharField(max_length=100)
     color = models.CharField(max_length=50)
     allergic = models.TextField(blank=True, null=True)
@@ -100,11 +100,39 @@ class Appointment(models.Model):
 
     def __str__(self):
         return f"{self.pet.name} - {self.purpose} on {self.date.strftime('%Y-%m-%d %H:%M')}"
+class Service(models.Model):
+    title = models.CharField(max_length=255)
+    description = models.TextField(null=True, blank=True)
 
 class Treatment(models.Model):
     appointment = models.ForeignKey(Appointment, on_delete=models.CASCADE, related_name='treatments')
-    title = models.CharField(max_length=255)
+    service = models.ForeignKey(Service, on_delete=models.CASCADE, related_name='treatments')
     description = models.TextField()
 
     def __str__(self):
-        return f"{self.title} for {self.appointment.pet.name}"
+        return f"{self.service} for {self.appointment.pet.name}"
+class Schedule(models.Model):
+    DAYS_OF_WEEK = [
+        (0, "Monday"),
+        (1, "Tuesday"),
+        (2, "Wednesday"),
+        (3, "Thursday"),
+        (4, "Friday"),
+        (5, "Saturday"),
+        (6, "Sunday"),
+    ]
+    vet = models.ForeignKey(User, on_delete=models.CASCADE, related_name='vet_schedules')
+    day_of_week = models.IntegerField(choices=DAYS_OF_WEEK)
+    start_time = models.TimeField()
+    end_time = models.TimeField()
+
+    def __str__(self):
+        return f"{self.get_day_of_week_display()} {self.start_time}-{self.end_time}"
+
+class Holiday(models.Model):
+    vet = models.ForeignKey(User, on_delete=models.CASCADE, related_name='vet_holidays')
+    holiday_date = models.DateField()
+    reason = models.CharField(max_length=200, blank=True, null=True)
+    is_full_day = models.BooleanField(default=True)
+    start_time = models.TimeField(blank=True, null=True)
+    end_time = models.TimeField(blank=True, null=True)

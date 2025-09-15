@@ -38,10 +38,13 @@ ALLOWED_HOSTS = env('ALLOWED_HOSTS')
 # Application definition
 
 INSTALLED_APPS = [
+    'django.contrib.admin',
+    'django.contrib.auth',
     'django.contrib.contenttypes',
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',
+    'rest_framework',
     'corsheaders',
     'reservation',
 ]
@@ -52,6 +55,7 @@ MIDDLEWARE = [
     'django.contrib.sessions.middleware.SessionMiddleware',
     'django.middleware.common.CommonMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
+    'django.contrib.auth.middleware.AuthenticationMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
 ]
@@ -66,6 +70,7 @@ TEMPLATES = [
         'OPTIONS': {
             'context_processors': [
                 'django.template.context_processors.request',
+                'django.contrib.auth.context_processors.auth',
                 'django.contrib.messages.context_processors.messages',
             ],
         },
@@ -126,11 +131,18 @@ DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
 # CORS settings for Svelte frontend
 CORS_ALLOWED_ORIGINS = [
-    "http://localhost:5173",  # Default Svelte dev server port
+    "http://localhost:5173",
     "http://127.0.0.1:5173",
 ]
 
-CORS_ALLOW_CREDENTIALS = True
+# Simple REST Framework setup
+REST_FRAMEWORK = {
+    'DEFAULT_PERMISSION_CLASSES': ['rest_framework.permissions.AllowAny'],
+}
 
-# For development only - allows all origins
-# CORS_ALLOW_ALL_ORIGINS = True
+# MinIO Configuration
+MINIO_ENDPOINT = env('MINIO_ENDPOINT', default='localhost:9000')
+MINIO_ACCESS_KEY = env('MINIO_ACCESS_KEY', default='minioadmin')
+MINIO_SECRET_KEY = env('MINIO_SECRET_KEY', default='minioadmin')
+MINIO_BUCKET_NAME = env('MINIO_BUCKET_NAME', default='petcare-images')
+MINIO_SECURE = env.bool('MINIO_SECURE', default=False)

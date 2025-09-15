@@ -2,6 +2,7 @@ from django.db import models
 from django.contrib.auth.hashers import make_password, check_password
 from datetime import datetime
 from django.utils import timezone
+from .services import minio_service
 
 class User(models.Model):
     ROLE_CHOICES = (
@@ -24,6 +25,11 @@ class User(models.Model):
 
     def check_password(self, raw_password):
         return check_password(raw_password, self.password)
+
+    def get_image_url(self):
+        if self.image_key:
+            return minio_service.get_image_url(self.image_key)
+        return None
 
     def __str__(self):
         return self.full_name

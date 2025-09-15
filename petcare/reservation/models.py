@@ -81,7 +81,7 @@ class Appointment(models.Model):
 
     user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='appointments')
     pet = models.ForeignKey(Pet, on_delete=models.CASCADE, related_name='appointments')
-    purpose = models.CharField(max_length=255)
+    purpose = models.TextField()
     remarks = models.TextField(blank=True, null=True)
     date = models.DateTimeField()
     status = models.CharField(
@@ -97,6 +97,8 @@ class Appointment(models.Model):
         related_name='vet_appointments'
     )
     vet_note = models.TextField(blank=True, null=True)
+    create_at = models.DateTimeField(auto_now=True)
+    last_update = models.DateTimeField(auto_now_add=True)
 
     def __str__(self):
         return f"{self.pet.name} - {self.purpose} on {self.date.strftime('%Y-%m-%d %H:%M')}"
@@ -128,11 +130,3 @@ class Schedule(models.Model):
 
     def __str__(self):
         return f"{self.get_day_of_week_display()} {self.start_time}-{self.end_time}"
-
-class Holiday(models.Model):
-    vet = models.ForeignKey(User, on_delete=models.CASCADE, related_name='vet_holidays')
-    holiday_date = models.DateField()
-    reason = models.CharField(max_length=200, blank=True, null=True)
-    is_full_day = models.BooleanField(default=True)
-    start_time = models.TimeField(blank=True, null=True)
-    end_time = models.TimeField(blank=True, null=True)

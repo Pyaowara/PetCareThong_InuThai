@@ -97,36 +97,20 @@ class Appointment(models.Model):
         related_name='vet_appointments'
     )
     vet_note = models.TextField(blank=True, null=True)
-    create_at = models.DateTimeField(auto_now=True)
-    last_update = models.DateTimeField(auto_now_add=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
 
     def __str__(self):
         return f"{self.pet.name} - {self.purpose} on {self.date.strftime('%Y-%m-%d %H:%M')}"
+
 class Service(models.Model):
     title = models.CharField(max_length=255)
     description = models.TextField(null=True, blank=True)
 
 class Treatment(models.Model):
     appointment = models.ForeignKey(Appointment, on_delete=models.CASCADE, related_name='treatments')
-    service = models.ForeignKey(Service, on_delete=models.CASCADE, related_name='treatments')
+    service = models.ForeignKey(Service, on_delete=models.CASCADE, related_name='treatments', null=True, blank=True)
     description = models.TextField()
 
     def __str__(self):
         return f"{self.service} for {self.appointment.pet.name}"
-class Schedule(models.Model):
-    DAYS_OF_WEEK = [
-        (0, "Monday"),
-        (1, "Tuesday"),
-        (2, "Wednesday"),
-        (3, "Thursday"),
-        (4, "Friday"),
-        (5, "Saturday"),
-        (6, "Sunday"),
-    ]
-    vet = models.ForeignKey(User, on_delete=models.CASCADE, related_name='vet_schedules')
-    day_of_week = models.IntegerField(choices=DAYS_OF_WEEK)
-    start_time = models.TimeField()
-    end_time = models.TimeField()
-
-    def __str__(self):
-        return f"{self.get_day_of_week_display()} {self.start_time}-{self.end_time}"

@@ -114,9 +114,7 @@ class ServiceView(APIView):
     def get(self, request):
         try:
             user_service = get_user_service(request)
-            print(user_service.check_authentication())
             user_service.check_authentication()
-            print(user_service.is_staff())
             if not user_service.is_staff():
                 return Response({'error': 'Permission denied'}, status=status.HTTP_403_FORBIDDEN)
             services = Service.objects.all()

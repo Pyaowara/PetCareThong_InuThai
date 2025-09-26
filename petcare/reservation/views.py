@@ -5,14 +5,23 @@ from rest_framework import status
 from django.db import transaction
 from .models import User
 from .serializers import UserSerializer, LoginSerializer, UserProfileSerializer
+from .services import get_user_service
 
 class UserView(APIView):
     parser_classes = [MultiPartParser, JSONParser]
     
     def get(self, request):
-        users = User.objects.all()
-        serializer = UserSerializer(users, many=True)
-        return Response(serializer.data)
+        try:
+            user_service = get_user_service(request)
+            if user_service.is_authenticated():
+                if not user_service.is_staff():
+                    return Response({'error': 'Staff access required'}, status=status.HTTP_403_FORBIDDEN)
+
+            users = User.objects.all()
+            serializer = UserSerializer(users, many=True)
+            return Response(serializer.data)
+        except PermissionError as e:
+            return Response({'error': str(e)}, status=status.HTTP_401_UNAUTHORIZED)
     
     def post(self, request):
         serializer = UserSerializer(data=request.data)
@@ -32,10 +41,16 @@ class UserDetailView(APIView):
     
     def delete(self, request, user_id):
         try:
+            user_service = get_user_service(request)
+            user_service.check_authentication()
+
+            if not user_service.is_staff() and str(user_service.user_id) != str(user_id):
+                return Response({'error': 'Permission denied'}, status=status.HTTP_403_FORBIDDEN)
+
             user = User.objects.get(id=user_id)
             serializer = UserSerializer(user)
 
-            delete_info = serializer.delete(user)
+            delete_info = serializer.delete(user, request)
             response_message = f'User {delete_info["user_email"]} deleted successfully'
                 
             return Response({
@@ -43,6 +58,8 @@ class UserDetailView(APIView):
                 'deleted_user_id': delete_info['user_id'],
                 'image_deleted': delete_info['image_deleted']
             }, status=status.HTTP_200_OK)
+        except PermissionError as e:
+            return Response({'error': str(e)}, status=status.HTTP_401_UNAUTHORIZED)
         except User.DoesNotExist:
             return Response({'error': 'User not found'}, status=status.HTTP_404_NOT_FOUND)
         except Exception as e:
@@ -77,13 +94,15 @@ class LogoutView(APIView):
 
 class UserProfileView(APIView):
     def get(self, request):
-        user_id = request.session.get('user_id')
-        if not user_id:
-            return Response({'error': 'Not authenticated'}, status=status.HTTP_401_UNAUTHORIZED)
-        
         try:
-            user = User.objects.get(id=user_id)
+            user_service = get_user_service(request)
+            user_service.check_authentication()
+            
+            user = user_service.get_user()
+            if not user:
+                return Response({'error': 'User not found'}, status=status.HTTP_404_NOT_FOUND)
+            
             serializer = UserProfileSerializer(user)
             return Response(serializer.data, status=status.HTTP_200_OK)
-        except User.DoesNotExist:
-            return Response({'error': 'User not found'}, status=status.HTTP_404_NOT_FOUND)
+        except PermissionError as e:
+            return Response({'error': str(e)}, status=status.HTTP_401_UNAUTHORIZED)

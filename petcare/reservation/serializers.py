@@ -1,7 +1,7 @@
 from rest_framework import serializers
 from django.db import transaction
 from .models import User
-from .services import minio_service
+from .services import minio_service, get_user_service
 import uuid
 import os
 
@@ -31,7 +31,11 @@ class UserSerializer(serializers.ModelSerializer):
         user.save()
         return user
     
-    def delete(self, instance):
+    def delete(self, instance, request=None):
+        if request:
+            user_service = get_user_service(request)
+            user_service.check_authentication()
+
         with transaction.atomic():
             user_id = instance.id
             user_email = instance.email
@@ -41,7 +45,7 @@ class UserSerializer(serializers.ModelSerializer):
             if image_key:
                 image_deleted = minio_service.delete_image(image_key)
                 if not image_deleted:
-                    print(f"Warning: Failed to delete image {image_key} from MinIO")
+                    raise Exception("Failed to delete user image from storage")
             
             return {
                 'user_email': user_email,
@@ -78,7 +82,6 @@ class UserProfileSerializer(serializers.ModelSerializer):
     class Meta:
         model = User
         fields = ['id', 'email', 'full_name', 'phone_number', 'role', 'active', 'created_at', 'image_url']
-        read_only_fields = ['id', 'created_at']
 
     def get_image_url(self, obj):
         return obj.get_image_url()

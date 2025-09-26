@@ -87,8 +87,6 @@ class UserProfileSerializer(serializers.ModelSerializer):
         return obj.get_image_url()
     
 class ServiceSerializer(serializers.ModelSerializer):
-    title = serializers.CharField(max_length=255)
-    description = serializers.CharField(style={'base_template': 'textarea.html'})
     class Meta:
         model = Service
         fields = ['id', 'title', 'description']

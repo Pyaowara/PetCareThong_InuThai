@@ -114,12 +114,11 @@ class ServiceView(APIView):
     def get(self, request):
         try:
             user_service = get_user_service(request)
-            if user_service.is_authenticated():
-                if not user_service.is_staff():
-                    return Response({'error': 'Permission denied'}, status=status.HTTP_403_FORBIDDEN)
-            else:
-                return Response({'error': 'Not Authenticated'}, status=status.HTTP_403_FORBIDDEN)
-
+            print(user_service.check_authentication())
+            user_service.check_authentication()
+            print(user_service.is_staff())
+            if not user_service.is_staff():
+                return Response({'error': 'Permission denied'}, status=status.HTTP_403_FORBIDDEN)
             services = Service.objects.all()
             serializer = ServiceSerializer(services, many=True)
             return Response(serializer.data)
@@ -130,11 +129,9 @@ class ServiceView(APIView):
     def post(self, request):
         try:
             user_service = get_user_service(request)
-            if user_service.is_authenticated():
-                if not user_service.is_staff():
-                    return Response({'error': 'Permission denied'}, status=status.HTTP_403_FORBIDDEN)
-            else:
-                return Response({'error': 'Not Authenticated'}, status=status.HTTP_403_FORBIDDEN)
+            user_service.check_authentication()
+            if not user_service.is_staff():
+                return Response({'error': 'Permission denied'}, status=status.HTTP_403_FORBIDDEN)
             serializer = ServiceSerializer(data=request.data)
             if serializer.is_valid():
                 serializer.save()
@@ -148,11 +145,9 @@ class UpdateServiceView(APIView):
     def get(self, request, service_id):
         try:
             user_service = get_user_service(request)
-            if user_service.is_authenticated():
-                if not user_service.is_staff():
-                    return Response({'error': 'Permission denied'}, status=status.HTTP_403_FORBIDDEN)
-            else:
-                return Response({'error': 'Not Authenticated'}, status=status.HTTP_403_FORBIDDEN)
+            user_service.check_authentication()
+            if not user_service.is_staff():
+                return Response({'error': 'Permission denied'}, status=status.HTTP_403_FORBIDDEN)
 
             service = Service.objects.get(id=service_id)
             serializer = ServiceSerializer(service)
@@ -169,12 +164,9 @@ class UpdateServiceView(APIView):
     def post(self, request, service_id):
         try:
             user_service = get_user_service(request)
-            if user_service.is_authenticated():
-                if not user_service.is_staff():
-                    return Response({'error': 'Permission denied'}, status=status.HTTP_403_FORBIDDEN)
-            else:
-                return Response({'error': 'Not Authenticated'}, status=status.HTTP_403_FORBIDDEN)
-            
+            user_service.check_authentication()
+            if not user_service.is_staff():
+                return Response({'error': 'Permission denied'}, status=status.HTTP_403_FORBIDDEN)
             service = Service.objects.get(id=service_id)
             serializer = ServiceSerializer(service, data=request.data, partial=True)
             if serializer.is_valid():
@@ -199,11 +191,9 @@ class UpdateServiceView(APIView):
     def delete(self, request, service_id):
         try:
             user_service = get_user_service(request)
-            if user_service.is_authenticated():
-                if not user_service.is_staff():
-                    return Response({'error': 'Permission denied'}, status=status.HTTP_403_FORBIDDEN)
-            else:
-                return Response({'error': 'Not Authenticated'}, status=status.HTTP_403_FORBIDDEN)
+            user_service.check_authentication()
+            if not user_service.is_staff():
+                return Response({'error': 'Permission denied'}, status=status.HTTP_403_FORBIDDEN)
             
             service = Service.objects.get(id=service_id)
             service_title = service.title

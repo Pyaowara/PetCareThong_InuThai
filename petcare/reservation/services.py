@@ -72,9 +72,6 @@ class UserService:
         self.session = session
         self.user_id = session.get('user_id', None)
     
-    def is_authenticated(self):
-        return self.user_id is not None
-    
     def get_user(self):
         from .models import User
         if self.user_id:
@@ -102,7 +99,7 @@ class UserService:
         return self.has_role('vet')
     
     def check_authentication(self):
-        if not self.is_authenticated():
+        if not self.user_id:
             raise PermissionError("Authentication required")
 
 def get_user_service(request):

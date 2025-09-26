@@ -109,13 +109,13 @@ class UserProfileView(APIView):
 
 class PetView(APIView):
     parser_classes = [MultiPartParser, JSONParser]
-    
+
     def get(self, request):
         try:
             user_service = get_user_service(request)
             user_service.check_authentication()
 
-            if user_service.is_staff():
+            if user_service.is_staff() or user_service.is_vet():
                 pets = Pet.objects.all().select_related('user')
             else:
                 pets = Pet.objects.filter(user=user_service.get_user()).select_related('user')
@@ -124,13 +124,13 @@ class PetView(APIView):
             return Response(serializer.data)
         except PermissionError as e:
             return Response({'error': str(e)}, status=status.HTTP_401_UNAUTHORIZED)
-    
+
     def post(self, request):
         try:
             user_service = get_user_service(request)
             user_service.check_authentication()
             request.user_service = user_service
-            
+
             serializer = PetSerializer(data=request.data, context={'request': request})
             if serializer.is_valid():
                 pet = serializer.save()
@@ -149,7 +149,7 @@ class PetDetailView(APIView):
             
             pet = Pet.objects.select_related('user').get(id=pet_id)
 
-            if not user_service.is_staff() and pet.user != user_service.get_user():
+            if not user_service.is_staff() and pet.user != user_service.get_user() and not user_service.is_vet():
                 return Response({'error': 'Permission denied'}, status=status.HTTP_403_FORBIDDEN)
             
             serializer = PetSerializer(pet)
@@ -166,7 +166,7 @@ class PetDetailView(APIView):
             
             pet = Pet.objects.get(id=pet_id)
 
-            if not user_service.is_staff() and pet.user != user_service.get_user():
+            if not user_service.is_staff() and pet.user != user_service.get_user() and not user_service.is_vet():
                 return Response({'error': 'Permission denied'}, status=status.HTTP_403_FORBIDDEN)
             
             serializer = PetSerializer(pet, data=request.data, partial=True)
@@ -186,7 +186,7 @@ class PetDetailView(APIView):
             
             pet = Pet.objects.get(id=pet_id)
 
-            if not user_service.is_staff() and pet.user != user_service.get_user():
+            if not user_service.is_staff() and pet.user != user_service.get_user() and not user_service.is_vet():
                 return Response({'error': 'Permission denied'}, status=status.HTTP_403_FORBIDDEN)
             
             pet_name = pet.name

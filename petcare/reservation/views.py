@@ -116,7 +116,7 @@ class ServiceView(APIView):
             user_service = get_user_service(request)
             if user_service.is_authenticated():
                 if not user_service.is_staff():
-                    return Response({'error': 'Staff access required'}, status=status.HTTP_403_FORBIDDEN)
+                    return Response({'error': 'Permission denied'}, status=status.HTTP_403_FORBIDDEN)
             else:
                 return Response({'error': 'Not Authenticated'}, status=status.HTTP_403_FORBIDDEN)
 
@@ -132,7 +132,7 @@ class ServiceView(APIView):
             user_service = get_user_service(request)
             if user_service.is_authenticated():
                 if not user_service.is_staff():
-                    return Response({'error': 'Staff access required'}, status=status.HTTP_403_FORBIDDEN)
+                    return Response({'error': 'Permission denied'}, status=status.HTTP_403_FORBIDDEN)
             else:
                 return Response({'error': 'Not Authenticated'}, status=status.HTTP_403_FORBIDDEN)
             serializer = ServiceSerializer(data=request.data)
@@ -150,7 +150,7 @@ class UpdateServiceView(APIView):
             user_service = get_user_service(request)
             if user_service.is_authenticated():
                 if not user_service.is_staff():
-                    return Response({'error': 'Staff access required'}, status=status.HTTP_403_FORBIDDEN)
+                    return Response({'error': 'Permission denied'}, status=status.HTTP_403_FORBIDDEN)
             else:
                 return Response({'error': 'Not Authenticated'}, status=status.HTTP_403_FORBIDDEN)
 
@@ -162,6 +162,8 @@ class UpdateServiceView(APIView):
                 return Response({'error': 'Service not found'}, status=status.HTTP_404_NOT_FOUND)
         except PermissionError as e:
             return Response({'error': str(e)}, status=status.HTTP_401_UNAUTHORIZED)
+        except Service.DoesNotExist:
+            return Response({'error': 'service not found'}, status=status.HTTP_404_NOT_FOUND)
     
     # Edit service
     def post(self, request, service_id):
@@ -169,18 +171,54 @@ class UpdateServiceView(APIView):
             user_service = get_user_service(request)
             if user_service.is_authenticated():
                 if not user_service.is_staff():
-                    return Response({'error': 'Staff access required'}, status=status.HTTP_403_FORBIDDEN)
+                    return Response({'error': 'Permission denied'}, status=status.HTTP_403_FORBIDDEN)
             else:
                 return Response({'error': 'Not Authenticated'}, status=status.HTTP_403_FORBIDDEN)
-            serializer = ServiceSerializer(data=request.data)
+            
             service = Service.objects.get(id=service_id)
+            serializer = ServiceSerializer(service, data=request.data, partial=True)
             if serializer.is_valid():
-                service.title = serializer.data['title']
-                service.description = serializer.data['description']
-                print(serializer)
-                service.save()
-                
-                return Response(serializer.data, status=status.HTTP_201_CREATED)
+                serializer.save()
+                return Response({
+                    'message': f'Update service_id {service_id} success',
+                    'services': serializer.data
+                }, status=status.HTTP_201_CREATED)
             return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
         except PermissionError as e:
             return Response({'error': str(e)}, status=status.HTTP_401_UNAUTHORIZED)
+        except Service.DoesNotExist:
+            return Response({'error': 'service not found'}, status=status.HTTP_404_NOT_FOUND)
+        except Exception as e:
+            return Response({
+                'error': 'Failed to update service',
+                'details': str(e)
+            }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+        
+    
+    # Delete Service
+    def delete(self, request, service_id):
+        try:
+            user_service = get_user_service(request)
+            if user_service.is_authenticated():
+                if not user_service.is_staff():
+                    return Response({'error': 'Permission denied'}, status=status.HTTP_403_FORBIDDEN)
+            else:
+                return Response({'error': 'Not Authenticated'}, status=status.HTTP_403_FORBIDDEN)
+            
+            service = Service.objects.get(id=service_id)
+            service_title = service.title
+            service.delete()
+            response_message = f'Service {service_title} deleted successfully'
+            return Response({
+                'message': response_message,
+                'delete_service_id': service_id
+            }, status=status.HTTP_200_OK)
+        except PermissionError as e:
+            return Response({'error': str(e)}, status=status.HTTP_401_UNAUTHORIZED)
+        except Service.DoesNotExist:
+            return Response({'error': 'service not found'}, status=status.HTTP_404_NOT_FOUND)
+        except Exception as e:
+            return Response({
+                'error': 'Failed to delete service',
+                'details': str(e)
+            }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)

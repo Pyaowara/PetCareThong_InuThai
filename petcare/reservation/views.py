@@ -13,9 +13,9 @@ class UserView(APIView):
     def get(self, request):
         try:
             user_service = get_user_service(request)
-            if user_service.is_authenticated():
-                if not user_service.is_staff():
-                    return Response({'error': 'Staff access required'}, status=status.HTTP_403_FORBIDDEN)
+            user_service.check_authentication()
+            if not user_service.is_staff():
+                return Response({'error': 'Staff access required'}, status=status.HTTP_403_FORBIDDEN)
 
             users = User.objects.all()
             serializer = UserSerializer(users, many=True)
@@ -216,7 +216,7 @@ class PetDetailView(APIView):
             }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 class UserPetsView(APIView):
-    
+
     def get(self, request, user_id):
         try:
             user_service = get_user_service(request)
@@ -224,12 +224,12 @@ class UserPetsView(APIView):
 
             if not user_service.is_staff() and str(user_service.user_id) != str(user_id):
                 return Response({'error': 'Permission denied'}, status=status.HTTP_403_FORBIDDEN)
-            
+
             try:
                 user = User.objects.get(id=user_id)
             except User.DoesNotExist:
                 return Response({'error': 'User not found'}, status=status.HTTP_404_NOT_FOUND)
-            
+
             pets = Pet.objects.filter(user=user).select_related('user')
             serializer = PetListSerializer(pets, many=True)
             

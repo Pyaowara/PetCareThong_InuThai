@@ -5,7 +5,7 @@ from rest_framework import status
 from django.db import transaction
 from .models import *
 from .serializers import *
-from .services import get_user_service
+from .services import *
 
 class UserView(APIView):
     parser_classes = [MultiPartParser, JSONParser]
@@ -13,9 +13,9 @@ class UserView(APIView):
     def get(self, request):
         try:
             user_service = get_user_service(request)
-            if user_service.is_authenticated():
-                if not user_service.is_staff():
-                    return Response({'error': 'Staff access required'}, status=status.HTTP_403_FORBIDDEN)
+            user_service.check_authentication()
+            if not user_service.is_staff():
+                return Response({'error': 'Staff access required'}, status=status.HTTP_403_FORBIDDEN)
 
             users = User.objects.all()
             serializer = UserSerializer(users, many=True)
@@ -210,3 +210,142 @@ class UpdateServiceView(APIView):
                 'error': 'Failed to delete service',
                 'details': str(e)
             }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+
+class PetView(APIView):
+    parser_classes = [MultiPartParser, JSONParser]
+
+    def get(self, request):
+        try:
+            user_service = get_user_service(request)
+            user_service.check_authentication()
+
+            if user_service.is_staff() or user_service.is_vet():
+                pets = Pet.objects.all().select_related('user')
+            else:
+                pets = Pet.objects.filter(user=user_service.get_user()).select_related('user')
+            
+            serializer = PetListSerializer(pets, many=True)
+            return Response(serializer.data)
+        except PermissionError as e:
+            return Response({'error': str(e)}, status=status.HTTP_401_UNAUTHORIZED)
+
+    def post(self, request):
+        try:
+            user_service = get_user_service(request)
+            user_service.check_authentication()
+            request.user_service = user_service
+
+            serializer = PetSerializer(data=request.data, context={'request': request})
+            if serializer.is_valid():
+                pet = serializer.save()
+                return Response(PetSerializer(pet).data, status=status.HTTP_201_CREATED)
+            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+        except PermissionError as e:
+            return Response({'error': str(e)}, status=status.HTTP_401_UNAUTHORIZED)
+
+class PetDetailView(APIView):
+    parser_classes = [MultiPartParser, JSONParser]
+    
+    def get(self, request, pet_id):
+        try:
+            user_service = get_user_service(request)
+            user_service.check_authentication()
+            
+            pet = Pet.objects.select_related('user').get(id=pet_id)
+
+            if not user_service.is_staff() and pet.user != user_service.get_user() and not user_service.is_vet():
+                return Response({'error': 'Permission denied'}, status=status.HTTP_403_FORBIDDEN)
+            
+            serializer = PetSerializer(pet)
+            return Response(serializer.data)
+        except Pet.DoesNotExist:
+            return Response({'error': 'Pet not found'}, status=status.HTTP_404_NOT_FOUND)
+        except PermissionError as e:
+            return Response({'error': str(e)}, status=status.HTTP_401_UNAUTHORIZED)
+    
+    def put(self, request, pet_id):
+        try:
+            user_service = get_user_service(request)
+            user_service.check_authentication()
+            
+            pet = Pet.objects.get(id=pet_id)
+
+            if not user_service.is_staff() and pet.user != user_service.get_user() and not user_service.is_vet():
+                return Response({'error': 'Permission denied'}, status=status.HTTP_403_FORBIDDEN)
+            
+            serializer = PetSerializer(pet, data=request.data, partial=True)
+            if serializer.is_valid():
+                pet = serializer.save()
+                return Response(PetSerializer(pet).data)
+            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+        except Pet.DoesNotExist:
+            return Response({'error': 'Pet not found'}, status=status.HTTP_404_NOT_FOUND)
+        except PermissionError as e:
+            return Response({'error': str(e)}, status=status.HTTP_401_UNAUTHORIZED)
+    
+    def delete(self, request, pet_id):
+        try:
+            user_service = get_user_service(request)
+            user_service.check_authentication()
+            
+            pet = Pet.objects.get(id=pet_id)
+
+            if not user_service.is_staff() and pet.user != user_service.get_user() and not user_service.is_vet():
+                return Response({'error': 'Permission denied'}, status=status.HTTP_403_FORBIDDEN)
+            
+            pet_name = pet.name
+            pet_owner = pet.user.full_name
+            image_key = pet.image_key
+
+            with transaction.atomic():
+                pet.delete()
+                if image_key:
+                    image_deleted = minio_service.delete_image(image_key)
+                    if not image_deleted:
+                        print(f"Warning: Failed to delete pet image {image_key} from MinIO")
+            
+            return Response({
+                'message': f'Pet {pet_name} (owner: {pet_owner}) deleted successfully',
+                'pet_id': pet_id,
+                'image_deleted': bool(image_key)
+            }, status=status.HTTP_200_OK)
+        except Pet.DoesNotExist:
+            return Response({'error': 'Pet not found'}, status=status.HTTP_404_NOT_FOUND)
+        except PermissionError as e:
+            return Response({'error': str(e)}, status=status.HTTP_401_UNAUTHORIZED)
+        except Exception as e:
+            return Response({
+                'error': 'Failed to delete pet',
+                'details': str(e)
+            }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+class UserPetsView(APIView):
+
+    def get(self, request, user_id):
+        try:
+            user_service = get_user_service(request)
+            user_service.check_authentication()
+
+            if not user_service.is_staff() and str(user_service.user_id) != str(user_id):
+                return Response({'error': 'Permission denied'}, status=status.HTTP_403_FORBIDDEN)
+
+            try:
+                user = User.objects.get(id=user_id)
+            except User.DoesNotExist:
+                return Response({'error': 'User not found'}, status=status.HTTP_404_NOT_FOUND)
+
+            pets = Pet.objects.filter(user=user).select_related('user')
+            serializer = PetListSerializer(pets, many=True)
+            
+            return Response({
+                'user': {
+                    'id': user.id,
+                    'full_name': user.full_name,
+                    'email': user.email
+                },
+                'pets': serializer.data,
+                'total_pets': len(serializer.data)
+            })
+        except PermissionError as e:
+            return Response({'error': str(e)}, status=status.HTTP_401_UNAUTHORIZED)

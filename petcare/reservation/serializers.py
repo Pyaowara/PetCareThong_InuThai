@@ -1,6 +1,6 @@
 from rest_framework import serializers
 from django.db import transaction
-from .models import User, Service
+from .models import *
 from .services import minio_service, get_user_service
 import uuid
 import os
@@ -90,3 +90,75 @@ class ServiceSerializer(serializers.ModelSerializer):
     class Meta:
         model = Service
         fields = ['id', 'title', 'description']
+
+class PetSerializer(serializers.ModelSerializer):
+    image = serializers.ImageField(required=False, write_only=True)
+    image_url = serializers.SerializerMethodField()
+    user = serializers.PrimaryKeyRelatedField(read_only=True)
+    age = serializers.SerializerMethodField()
+
+    class Meta:
+        model = Pet
+        fields = [
+            'id', 'user', 'name', 'gender', 'breed', 'color', 
+            'allergic', 'marks', 'chronic_conditions', 'neutered_status', 
+            'birth_date', 'image', 'image_url', 'age'
+        ]
+
+    def get_image_url(self, obj):
+        return obj.get_image_url()
+
+    def get_age(self, obj):
+        from datetime import date
+        today = date.today()
+        age = today.year - obj.birth_date.year - ((today.month, today.day) < (obj.birth_date.month, obj.birth_date.day))
+        return age
+
+    def create(self, validated_data):
+        image_file = validated_data.pop('image', None)
+
+        request = self.context.get('request')
+        validated_data['user'] = request.user_service.get_user()
+
+        if image_file:
+            unique_filename = f"pets/{uuid.uuid4()}{os.path.splitext(image_file.name)[1] or '.jpg'}"
+            if minio_service.upload_image(image_file, unique_filename, image_file.content_type or 'image/jpeg'):
+                validated_data['image_key'] = unique_filename
+
+        pet = Pet.objects.create(**validated_data)
+        return pet
+
+    def update(self, instance, validated_data):
+        image_file = validated_data.pop('image', None)
+
+        if image_file:
+            if instance.image_key:
+                minio_service.delete_image(instance.image_key)
+
+            unique_filename = f"pets/{uuid.uuid4()}{os.path.splitext(image_file.name)[1] or '.jpg'}"
+            if minio_service.upload_image(image_file, unique_filename, image_file.content_type or 'image/jpeg'):
+                validated_data['image_key'] = unique_filename
+
+        for attr, value in validated_data.items():
+            setattr(instance, attr, value)
+        
+        instance.save()
+        return instance
+
+class PetListSerializer(serializers.ModelSerializer):
+    image_url = serializers.SerializerMethodField()
+    age = serializers.SerializerMethodField()
+    owner_name = serializers.CharField(source='user.full_name', read_only=True)
+
+    class Meta:
+        model = Pet
+        fields = ['id', 'name', 'breed', 'gender', 'age', 'image_url', 'owner_name']
+
+    def get_image_url(self, obj):
+        return obj.get_image_url()
+
+    def get_age(self, obj):
+        from datetime import date
+        today = date.today()
+        age = today.year - obj.birth_date.year - ((today.month, today.day) < (obj.birth_date.month, obj.birth_date.day))
+        return age

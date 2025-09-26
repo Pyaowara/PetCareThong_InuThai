@@ -63,6 +63,11 @@ class Pet(models.Model):
     birth_date = models.DateField()
     vaccines = models.ManyToManyField(Vaccine, through='Vaccinated', related_name='pets')
 
+    def get_image_url(self):
+        if self.image_key:
+            return minio_service.get_image_url(self.image_key)
+        return None
+
     def __str__(self):
         return f"{self.name} ({self.user.full_name})"
 

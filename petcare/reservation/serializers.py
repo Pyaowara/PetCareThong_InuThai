@@ -1,4 +1,5 @@
 from rest_framework import serializers
+from django.db import transaction
 from .models import User
 from .services import minio_service
 import uuid
@@ -29,3 +30,21 @@ class UserSerializer(serializers.ModelSerializer):
         user.set_password(password)
         user.save()
         return user
+    
+    def delete(self, instance):
+        with transaction.atomic():
+            user_id = instance.id
+            user_email = instance.email
+            image_key = instance.image_key
+            instance.delete()
+
+            if image_key:
+                image_deleted = minio_service.delete_image(image_key)
+                if not image_deleted:
+                    print(f"Warning: Failed to delete image {image_key} from MinIO")
+            
+            return {
+                'user_email': user_email,
+                'user_id': user_id,
+                'image_deleted': bool(image_key)
+            }

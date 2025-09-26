@@ -71,7 +71,7 @@ class UserService:
     def __init__(self, session):
         self.session = session
         self.user_id = session.get('user_id', None)
-    
+
     def get_user(self):
         from .models import User
         if self.user_id:
@@ -80,26 +80,26 @@ class UserService:
             except User.DoesNotExist:
                 return None
         return None
-    
+
     def get_role(self):
         user = self.get_user()
         return user.role if user else None
-    
+
     def has_role(self, required_role):
         user_role = self.get_role()
         return user_role == required_role if user_role else False
-    
+
     def is_staff(self):
         return self.has_role('staff')
-    
+
     def is_client(self):
         return self.has_role('client')
-    
+
     def is_vet(self):
         return self.has_role('vet')
-    
+
     def check_authentication(self):
-        if not self.is_authenticated():
+        if not self.user_id:
             raise PermissionError("Authentication required")
 
 def get_user_service(request):

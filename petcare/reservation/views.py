@@ -3,8 +3,8 @@ from rest_framework.parsers import MultiPartParser, JSONParser
 from rest_framework.response import Response
 from rest_framework import status
 from django.db import transaction
-from .models import User
-from .serializers import UserSerializer, LoginSerializer, UserProfileSerializer
+from .models import *
+from .serializers import *
 from .services import get_user_service
 
 class UserView(APIView):
@@ -104,5 +104,83 @@ class UserProfileView(APIView):
             
             serializer = UserProfileSerializer(user)
             return Response(serializer.data, status=status.HTTP_200_OK)
+        except PermissionError as e:
+            return Response({'error': str(e)}, status=status.HTTP_401_UNAUTHORIZED)
+
+class ServiceView(APIView):
+    parser_classes = [MultiPartParser, JSONParser]
+    
+    # Get all service
+    def get(self, request):
+        try:
+            user_service = get_user_service(request)
+            if user_service.is_authenticated():
+                if not user_service.is_staff():
+                    return Response({'error': 'Staff access required'}, status=status.HTTP_403_FORBIDDEN)
+            else:
+                return Response({'error': 'Not Authenticated'}, status=status.HTTP_403_FORBIDDEN)
+
+            services = Service.objects.all()
+            serializer = ServiceSerializer(services, many=True)
+            return Response(serializer.data)
+        except PermissionError as e:
+            return Response({'error': str(e)}, status=status.HTTP_401_UNAUTHORIZED)
+    
+    # Create Service
+    def post(self, request):
+        try:
+            user_service = get_user_service(request)
+            if user_service.is_authenticated():
+                if not user_service.is_staff():
+                    return Response({'error': 'Staff access required'}, status=status.HTTP_403_FORBIDDEN)
+            else:
+                return Response({'error': 'Not Authenticated'}, status=status.HTTP_403_FORBIDDEN)
+            serializer = ServiceSerializer(data=request.data)
+            if serializer.is_valid():
+                serializer.save()
+                return Response(serializer.data, status=status.HTTP_201_CREATED)
+            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+        except PermissionError as e:
+            return Response({'error': str(e)}, status=status.HTTP_401_UNAUTHORIZED)
+    
+class UpdateServiceView(APIView):
+    # Get a service
+    def get(self, request, service_id):
+        try:
+            user_service = get_user_service(request)
+            if user_service.is_authenticated():
+                if not user_service.is_staff():
+                    return Response({'error': 'Staff access required'}, status=status.HTTP_403_FORBIDDEN)
+            else:
+                return Response({'error': 'Not Authenticated'}, status=status.HTTP_403_FORBIDDEN)
+
+            service = Service.objects.get(id=service_id)
+            serializer = ServiceSerializer(service)
+            if service:
+                return Response(serializer.data)
+            else:
+                return Response({'error': 'Service not found'}, status=status.HTTP_404_NOT_FOUND)
+        except PermissionError as e:
+            return Response({'error': str(e)}, status=status.HTTP_401_UNAUTHORIZED)
+    
+    # Edit service
+    def post(self, request, service_id):
+        try:
+            user_service = get_user_service(request)
+            if user_service.is_authenticated():
+                if not user_service.is_staff():
+                    return Response({'error': 'Staff access required'}, status=status.HTTP_403_FORBIDDEN)
+            else:
+                return Response({'error': 'Not Authenticated'}, status=status.HTTP_403_FORBIDDEN)
+            serializer = ServiceSerializer(data=request.data)
+            service = Service.objects.get(id=service_id)
+            if serializer.is_valid():
+                service.title = serializer.data['title']
+                service.description = serializer.data['description']
+                print(serializer)
+                service.save()
+                
+                return Response(serializer.data, status=status.HTTP_201_CREATED)
+            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
         except PermissionError as e:
             return Response({'error': str(e)}, status=status.HTTP_401_UNAUTHORIZED)

@@ -1,6 +1,6 @@
 from rest_framework import serializers
 from django.db import transaction
-from .models import User, Service, Pet, Vaccine
+from .models import *
 from .services import minio_service, get_user_service
 import uuid
 import os

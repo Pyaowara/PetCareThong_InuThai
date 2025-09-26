@@ -30,7 +30,7 @@ environ.Env.read_env(BASE_DIR.parent / '.env')
 
 SECRET_KEY = env('SECRET_KEY')
 
-DEBUG = env('DEBUG')
+DEBUG = True
 
 ALLOWED_HOSTS = env('ALLOWED_HOSTS')
 
@@ -130,10 +130,7 @@ STATIC_URL = 'static/'
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
 # CORS settings for Svelte frontend
-CORS_ALLOWED_ORIGINS = [
-    "http://localhost:5173",
-    "http://127.0.0.1:5173",
-]
+CORS_ALLOWED_ORIGINS = env.list('CORS_ALLOW_ORIGIN', default=[])
 
 # Simple REST Framework setup
 REST_FRAMEWORK = {

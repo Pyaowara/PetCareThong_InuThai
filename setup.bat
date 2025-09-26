@@ -73,62 +73,7 @@ python -m pip install --upgrade pip
 REM Install Django
 echo.
 echo Installing Django...
-pip install django
-if %errorlevel% neq 0 (
-    echo Error: Failed to install Django
-    pause
-    exit /b 1
-)
-
-REM Install psycopg2-binary
-echo.
-echo Installing psycopg2-binary...
-pip install psycopg2-binary
-if %errorlevel% neq 0 (
-    echo Error: Failed to install psycopg2-binary
-    pause
-    exit /b 1
-)
-
-REM Install django-cors-headers for frontend communication
-echo.
-echo Installing django-cors-headers...
-pip install django-cors-headers
-if %errorlevel% neq 0 (
-    echo Error: Failed to install django-cors-headers
-    pause
-    exit /b 1
-)
-
-REM Install Django REST Framework
-echo.
-echo Installing djangorestframework...
-pip install djangorestframework
-if %errorlevel% neq 0 (
-    echo Error: Failed to install djangorestframework
-    pause
-    exit /b 1
-)
-
-REM Install markdown for DRF
-echo.
-echo Installing markdown...
-pip install markdown
-if %errorlevel% neq 0 (
-    echo Error: Failed to install markdown
-    pause
-    exit /b 1
-)
-
-REM Install django-filter for DRF
-echo.
-echo Installing django-filter...
-pip install django-filter
-if %errorlevel% neq 0 (
-    echo Error: Failed to install django-filter
-    pause
-    exit /b 1
-)
+pip install -r requirements.txt 
 
 echo.
 echo Backend Python packages installed successfully!

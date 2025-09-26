@@ -3,9 +3,6 @@ __pycache__/
 *.py[cod]
 *.pyc
 
-#minio
-minio/data
-
 # Django
 db.sqlite3
 db.sqlite3-journal

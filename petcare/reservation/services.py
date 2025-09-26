@@ -99,7 +99,7 @@ class UserService:
         return self.has_role('vet')
     
     def check_authentication(self):
-        if not self.user_id:
+        if not self.is_authenticated():
             raise PermissionError("Authentication required")
 
 def get_user_service(request):

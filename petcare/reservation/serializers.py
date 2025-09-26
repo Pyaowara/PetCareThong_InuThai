@@ -48,3 +48,37 @@ class UserSerializer(serializers.ModelSerializer):
                 'user_id': user_id,
                 'image_deleted': bool(image_key)
             }
+
+class LoginSerializer(serializers.Serializer):
+    email = serializers.EmailField()
+    password = serializers.CharField()
+
+    def validate(self, data):
+        email = data.get('email')
+        password = data.get('password')
+
+        if email and password:
+            try:
+                user = User.objects.get(email=email)
+                if user.check_password(password):
+                    if not user.active:
+                        raise serializers.ValidationError('User account is disabled.')
+                    data['user'] = user
+                    return data
+                else:
+                    raise serializers.ValidationError('Invalid email or password.')
+            except User.DoesNotExist:
+                raise serializers.ValidationError('Invalid email or password.')
+        else:
+            raise serializers.ValidationError('Must include email and password.')
+
+class UserProfileSerializer(serializers.ModelSerializer):
+    image_url = serializers.SerializerMethodField()
+
+    class Meta:
+        model = User
+        fields = ['id', 'email', 'full_name', 'phone_number', 'role', 'active', 'created_at', 'image_url']
+        read_only_fields = ['id', 'created_at']
+
+    def get_image_url(self, obj):
+        return obj.get_image_url()

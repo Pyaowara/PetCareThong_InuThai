@@ -4,7 +4,7 @@ from rest_framework.response import Response
 from rest_framework import status
 from django.db import transaction
 from .models import User
-from .serializers import UserSerializer
+from .serializers import UserSerializer, LoginSerializer, UserProfileSerializer
 
 class UserView(APIView):
     parser_classes = [MultiPartParser, JSONParser]
@@ -50,3 +50,40 @@ class UserDetailView(APIView):
                 'error': 'Failed to delete user',
                 'details': str(e)
             }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+class LoginView(APIView):
+    def post(self, request):
+        serializer = LoginSerializer(data=request.data)
+        if serializer.is_valid():
+            user = serializer.validated_data['user']
+            print(user)
+            request.session['user_id'] = user.id
+            
+            return Response({
+                'message': 'Login successful',
+                'user': {
+                    'id': user.id,
+                    'email': user.email,
+                    'full_name': user.full_name,
+                    'role': user.role
+                }
+            }, status=status.HTTP_200_OK)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+class LogoutView(APIView):
+    def post(self, request):
+        request.session.flush()
+        return Response({'message': 'Logout successful'}, status=status.HTTP_200_OK)
+
+class UserProfileView(APIView):
+    def get(self, request):
+        user_id = request.session.get('user_id')
+        if not user_id:
+            return Response({'error': 'Not authenticated'}, status=status.HTTP_401_UNAUTHORIZED)
+        
+        try:
+            user = User.objects.get(id=user_id)
+            serializer = UserProfileSerializer(user)
+            return Response(serializer.data, status=status.HTTP_200_OK)
+        except User.DoesNotExist:
+            return Response({'error': 'User not found'}, status=status.HTTP_404_NOT_FOUND)

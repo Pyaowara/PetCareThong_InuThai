@@ -1,6 +1,6 @@
 from rest_framework import serializers
 from django.db import transaction
-from .models import User
+from .models import User, Service
 from .services import minio_service, get_user_service
 import uuid
 import os
@@ -85,3 +85,8 @@ class UserProfileSerializer(serializers.ModelSerializer):
 
     def get_image_url(self, obj):
         return obj.get_image_url()
+    
+class ServiceSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Service
+        fields = ['id', 'title', 'description']

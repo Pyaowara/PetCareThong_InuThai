@@ -302,6 +302,12 @@ class PetView(APIView):
         try:
             user_service = get_user_service(request)
             user_service.check_authentication()
+
+            if user_service.is_vet():
+                return Response({
+                    'error': 'Veterinarians cannot create pet records. Please contact staff.'
+                }, status=status.HTTP_403_FORBIDDEN)
+            
             request.user_service = user_service
 
             serializer = PetSerializer(data=request.data, context={'request': request})
@@ -346,7 +352,7 @@ class PetDetailView(APIView):
             
             pet = Pet.objects.select_related('user').get(id=pet_id)
 
-            if not user_service.is_staff() and pet.user != user_service.get_user() and not user_service.is_vet():
+            if not user_service.is_staff() and pet.user != user_service.get_user():
                 return Response({'error': 'Permission denied'}, status=status.HTTP_403_FORBIDDEN)
             
             serializer = PetSerializer(pet, data=request.data, partial=True)
@@ -366,7 +372,7 @@ class PetDetailView(APIView):
             
             pet = Pet.objects.select_related('user').get(id=pet_id)
 
-            if not user_service.is_staff() and pet.user != user_service.get_user() and not user_service.is_vet():
+            if not user_service.is_staff() and pet.user != user_service.get_user():
                 return Response({'error': 'Permission denied'}, status=status.HTTP_403_FORBIDDEN)
             
             pet_name = pet.name

@@ -158,13 +158,14 @@ class PetSerializer(serializers.ModelSerializer):
     image_url = serializers.SerializerMethodField()
     user = serializers.PrimaryKeyRelatedField(read_only=True)
     age = serializers.SerializerMethodField()
+    owner_id = serializers.IntegerField(write_only=True, required=False)
 
     class Meta:
         model = Pet
         fields = [
             'id', 'user', 'name', 'gender', 'breed', 'color', 
             'allergic', 'marks', 'chronic_conditions', 'neutered_status', 
-            'birth_date', 'image', 'image_url', 'age'
+            'birth_date', 'image', 'image_url', 'age', 'owner_id'
         ]
 
     def get_image_url(self, obj):
@@ -178,9 +179,26 @@ class PetSerializer(serializers.ModelSerializer):
 
     def create(self, validated_data):
         image_file = validated_data.pop('image', None)
+        owner_id = validated_data.pop('owner_id', None)
 
         request = self.context.get('request')
-        validated_data['user'] = request.user_service.get_user()
+        user_service = request.user_service
+
+        if user_service.is_staff():
+            if owner_id:
+                try:
+                    owner = User.objects.get(id=owner_id)
+                    validated_data['user'] = owner
+                except User.DoesNotExist:
+                    raise serializers.ValidationError({'owner_id': 'Invalid user ID provided.'})
+            else:
+                validated_data['user'] = user_service.get_user()
+        elif user_service.is_client():
+            if owner_id and owner_id != user_service.user_id:
+                raise serializers.ValidationError({'owner_id': 'Clients can only create pets for themselves.'})
+            validated_data['user'] = user_service.get_user()
+        else:
+            raise serializers.ValidationError({'error': 'Invalid user role for pet creation.'})
 
         if image_file:
             unique_filename = f"pets/{uuid.uuid4()}{os.path.splitext(image_file.name)[1] or '.jpg'}"

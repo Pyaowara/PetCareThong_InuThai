@@ -85,6 +85,68 @@ class UserProfileSerializer(serializers.ModelSerializer):
 
     def get_image_url(self, obj):
         return obj.get_image_url()
+
+class UserUpdateSerializer(serializers.ModelSerializer):
+    current_password = serializers.CharField(write_only=True, required=False)
+    password = serializers.CharField(write_only=True, required=False)
+    image = serializers.ImageField(required=False, write_only=True)
+    image_url = serializers.SerializerMethodField()
+
+    class Meta:
+        model = User
+        fields = ['id', 'email', 'password', 'current_password', 'full_name', 'phone_number', 'role', 'active', 'image', 'image_url']
+
+    def get_image_url(self, obj):
+        return obj.get_image_url()
+
+    def validate(self, data):
+        user = self.instance
+        request = self.context.get('request')
+        user_service = get_user_service(request)
+
+        is_staff = user_service.is_staff()
+        is_own_profile = str(user_service.user_id) == str(user.id)
+        
+        if not is_staff and not is_own_profile:
+            raise serializers.ValidationError("You can only update your own profile.")
+
+        if not is_staff:
+            current_password = data.get('current_password')
+            if not current_password:
+                raise serializers.ValidationError("Current password is required to update your profile.")
+            
+            if not user.check_password(current_password):
+                raise serializers.ValidationError("Current password is incorrect.")
+
+            restricted_fields = ['role', 'active']
+            for field in restricted_fields:
+                if field in data:
+                    del data[field]
+
+        data.pop('current_password', None)
+        
+        return data
+
+    def update(self, instance, validated_data):
+        password = validated_data.pop('password', None)
+        image_file = validated_data.pop('image', None)
+
+        if image_file:
+            if instance.image_key:
+                minio_service.delete_image(instance.image_key)
+
+            unique_filename = f"{uuid.uuid4()}{os.path.splitext(image_file.name)[1] or '.jpg'}"
+            if minio_service.upload_image(image_file, unique_filename, image_file.content_type or 'image/jpeg'):
+                validated_data['image_key'] = unique_filename
+
+        for attr, value in validated_data.items():
+            setattr(instance, attr, value)
+
+        if password:
+            instance.set_password(password)
+        
+        instance.save()
+        return instance
     
 class ServiceSerializer(serializers.ModelSerializer):
     class Meta:
@@ -162,3 +224,38 @@ class PetListSerializer(serializers.ModelSerializer):
         today = date.today()
         age = today.year - obj.birth_date.year - ((today.month, today.day) < (obj.birth_date.month, obj.birth_date.day))
         return age
+
+class VaccineSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Vaccine
+        fields = ['id', 'name', 'description']
+
+    def validate_name(self, value):
+        if Vaccine.objects.filter(name__iexact=value).exclude(id=getattr(self.instance, 'id', None)).exists():
+            raise serializers.ValidationError("A vaccine with this name already exists.")
+        return value
+
+class VaccinatedSerializer(serializers.ModelSerializer):
+    pet_name = serializers.CharField(source='pet.name', read_only=True)
+    vaccine_name = serializers.CharField(source='vaccine.name', read_only=True)
+    owner_name = serializers.CharField(source='pet.user.full_name', read_only=True)
+
+    class Meta:
+        model = Vaccinated
+        fields = ['id', 'pet', 'vaccine', 'date', 'remarks', 'pet_name', 'vaccine_name', 'owner_name']
+
+    def validate_date(self, value):
+        from datetime import date
+        if value > date.today():
+            raise serializers.ValidationError("Vaccination date cannot be in the future.")
+        return value
+
+class VaccinatedListSerializer(serializers.ModelSerializer):
+    pet_name = serializers.CharField(source='pet.name', read_only=True)
+    pet_breed = serializers.CharField(source='pet.breed', read_only=True)
+    vaccine_name = serializers.CharField(source='vaccine.name', read_only=True)
+    owner_name = serializers.CharField(source='pet.user.full_name', read_only=True)
+
+    class Meta:
+        model = Vaccinated
+        fields = ['id', 'date', 'remarks', 'pet_name', 'pet_breed', 'vaccine_name', 'owner_name']

@@ -163,7 +163,6 @@
                         {#if vaccine.description}
                             <p class="vaccine-description">{vaccine.description}</p>
                         {/if}
-                        <p class="vaccine-date">Created: {formatDate(vaccine.created_at)}</p>
                     </div>
                     
                     {#if canManageVaccines()}

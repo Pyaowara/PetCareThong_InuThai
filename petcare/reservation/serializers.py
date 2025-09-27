@@ -259,3 +259,10 @@ class VaccinatedListSerializer(serializers.ModelSerializer):
     class Meta:
         model = Vaccinated
         fields = ['id', 'date', 'remarks', 'pet_name', 'pet_breed', 'vaccine_name', 'owner_name']
+
+class BookAppointmentSerializer(serializers.ModelSerializer):
+    user = serializers.PrimaryKeyRelatedField(read_only=True, required=False)
+    # pet = serializers.PrimaryKeyRelatedField(read_only=True)
+    class Meta:
+        model = Appointment
+        fields = ['id', 'user', 'pet', 'purpose', 'remarks', 'date']

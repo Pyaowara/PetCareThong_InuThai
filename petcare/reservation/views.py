@@ -579,3 +579,37 @@ class VaccinatedDetailView(APIView):
             return Response({'error': 'Vaccination record not found'}, status=status.HTTP_404_NOT_FOUND)
         except PermissionError as e:
             return Response({'error': str(e)}, status=status.HTTP_401_UNAUTHORIZED)
+        
+class BookAppointmentView(APIView):
+
+    def post(self, request):
+        try:
+            user_service = get_user_service(request)
+            user_service.check_authentication()
+            # By Client
+            if user_service.is_client():
+                request.user_service = user_service
+                serializer = BookAppointmentSerializer(data=request.data)
+                user = user_service.get_user()
+                if serializer.is_valid():
+                    pet = serializer.validated_data['pet']
+                    if pet.user != user:
+                        return Response({'error': 'Wrong owner pet'}, status=status.HTTP_403_FORBIDDEN)
+                    app = serializer.save(user = user)
+                    return Response(BookAppointmentSerializer(app).data, status=status.HTTP_201_CREATED)
+                return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+            # By staff
+            elif user_service.is_staff():
+                serializer = BookAppointmentSerializer(data=request.data)
+                if serializer.is_valid():
+                    pet = serializer.validated_data['pet']
+                    if pet.user != serializer.validated_data['user']:
+                        return Response({'error': 'Wrong owner pet'}, status=status.HTTP_403_FORBIDDEN)
+                    app = serializer.save()
+                    return Response(BookAppointmentSerializer(app).data, status=status.HTTP_201_CREATED)
+                return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+            # Can't book
+            else:
+                return Response({'error': 'Permission denied'}, status=status.HTTP_403_FORBIDDEN)
+        except PermissionError as e:
+            return Response({'error': str(e)}, status=status.HTTP_401_UNAUTHORIZED)

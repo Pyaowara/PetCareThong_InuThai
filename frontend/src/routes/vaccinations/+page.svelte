@@ -1,8 +1,8 @@
 <script lang="ts">
-    import { onMount } from 'svelte';
-    import { goto } from '$app/navigation';
-    import { isAuthenticated, user, authService } from '$lib/auth';
-    import { vaccinationApi, vaccineApi, petApi } from '$lib/apiServices';
+    import { onMount } from "svelte";
+    import { goto } from "$app/navigation";
+    import { isAuthenticated, user, authService } from "$lib/auth";
+    import { vaccinationApi, vaccineApi, petApi } from "$lib/apiServices";
 
     interface Vaccination {
         id: number;
@@ -35,31 +35,41 @@
     let pets: Pet[] = [];
     let vaccines: Vaccine[] = [];
     let isLoading = true;
-    let error = '';
-    let searchQuery = '';
-    let dateFilter = '';
-    let petFilter = '';
-    let vaccineFilter = '';
+    let error = "";
+    let searchQuery = "";
+    let dateFilter = "";
+    let petFilter = "";
+    let vaccineFilter = "";
     let showCreateModal = false;
 
     // Form data
     let vaccinationForm = {
         pet: null as number | null,
         vaccine: null as number | null,
-        date: '',
-        remarks: ''
+        date: "",
+        remarks: "",
     };
 
-    $: filteredVaccinations = vaccinations.filter(vaccination => {
-        const matchesSearch = !searchQuery || 
-            vaccination.pet_name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-            vaccination.vaccine_name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-            (vaccination.remarks && vaccination.remarks.toLowerCase().includes(searchQuery.toLowerCase()));
-        
+    $: filteredVaccinations = vaccinations.filter((vaccination) => {
+        const matchesSearch =
+            !searchQuery ||
+            vaccination.pet_name
+                .toLowerCase()
+                .includes(searchQuery.toLowerCase()) ||
+            vaccination.vaccine_name
+                .toLowerCase()
+                .includes(searchQuery.toLowerCase()) ||
+            (vaccination.remarks &&
+                vaccination.remarks
+                    .toLowerCase()
+                    .includes(searchQuery.toLowerCase()));
+
         const matchesDate = !dateFilter || vaccination.date === dateFilter;
-        const matchesPet = !petFilter || vaccination.pet.toString() === petFilter;
-        const matchesVaccine = !vaccineFilter || vaccination.vaccine.toString() === vaccineFilter;
-        
+        const matchesPet =
+            !petFilter || vaccination.pet.toString() === petFilter;
+        const matchesVaccine =
+            !vaccineFilter || vaccination.vaccine.toString() === vaccineFilter;
+
         return matchesSearch && matchesDate && matchesPet && matchesVaccine;
     });
 
@@ -67,33 +77,24 @@
 
     onMount(async () => {
         if (!$isAuthenticated) {
-            goto('/login');
+            goto("/login");
             return;
         }
-        
-        await Promise.all([
-            loadVaccinations(),
-            loadPets(),
-            loadVaccines()
-        ]);
+
+        await Promise.all([loadVaccinations(), loadPets(), loadVaccines()]);
     });
 
     async function loadVaccinations() {
         try {
             isLoading = true;
             vaccinations = await vaccinationApi.getVaccinations();
-            
-            // If user is a client, filter to only their pets' vaccinations
-            if ($user?.role === 'client') {
-                vaccinations = vaccinations.filter(vaccination => {
-                    const pet = pets.find(p => p.id === vaccination.pet);
-                    return pet?.user_id === $user?.id;
-                });
-            }
-            
-            error = '';
+
+            error = "";
         } catch (err) {
-            error = err instanceof Error ? err.message : 'Failed to load vaccination records';
+            error =
+                err instanceof Error
+                    ? err.message
+                    : "Failed to load vaccination records";
         } finally {
             isLoading = false;
         }
@@ -103,7 +104,7 @@
         try {
             pets = await petApi.getPets();
         } catch (err) {
-            console.error('Failed to load pets:', err);
+            console.error("Failed to load pets:", err);
         }
     }
 
@@ -111,13 +112,17 @@
         try {
             vaccines = await vaccineApi.getVaccines();
         } catch (err) {
-            console.error('Failed to load vaccines:', err);
+            console.error("Failed to load vaccines:", err);
         }
     }
 
     async function createVaccination() {
-        if (!vaccinationForm.pet || !vaccinationForm.vaccine || !vaccinationForm.date) {
-            error = 'Pet, vaccine, and date are required';
+        if (
+            !vaccinationForm.pet ||
+            !vaccinationForm.vaccine ||
+            !vaccinationForm.date
+        ) {
+            error = "Pet, vaccine, and date are required";
             return;
         }
 
@@ -127,12 +132,19 @@
             resetForm();
             showCreateModal = false;
         } catch (err) {
-            error = err instanceof Error ? err.message : 'Failed to create vaccination record';
+            error =
+                err instanceof Error
+                    ? err.message
+                    : "Failed to create vaccination record";
         }
     }
 
     async function deleteVaccination(vaccination: Vaccination) {
-        if (!confirm(`Are you sure you want to delete this vaccination record for ${vaccination.pet_name}?`)) {
+        if (
+            !confirm(
+                `Are you sure you want to delete this vaccination record for ${vaccination.pet_name}?`,
+            )
+        ) {
             return;
         }
 
@@ -140,28 +152,31 @@
             await vaccinationApi.deleteVaccination(vaccination.id);
             await loadVaccinations();
         } catch (err) {
-            error = err instanceof Error ? err.message : 'Failed to delete vaccination record';
+            error =
+                err instanceof Error
+                    ? err.message
+                    : "Failed to delete vaccination record";
         }
     }
 
     function resetForm() {
-        vaccinationForm = { pet: null, vaccine: null, date: '', remarks: '' };
-        error = '';
+        vaccinationForm = { pet: null, vaccine: null, date: "", remarks: "" };
+        error = "";
     }
 
     function clearFilters() {
-        searchQuery = '';
-        dateFilter = '';
-        petFilter = '';
-        vaccineFilter = '';
+        searchQuery = "";
+        dateFilter = "";
+        petFilter = "";
+        vaccineFilter = "";
     }
 
     function canCreateVaccinations(): boolean {
-        return $user?.role === 'staff' || $user?.role === 'vet';
+        return $user?.role === "staff" || $user?.role === "vet";
     }
 
     function canDeleteVaccination(): boolean {
-        return $user?.role === 'staff' || $user?.role === 'vet';
+        return $user?.role === "staff" || $user?.role === "vet";
     }
 
     function formatDate(dateString: string): string {
@@ -169,7 +184,7 @@
     }
 
     function getTodayDate(): string {
-        return new Date().toISOString().split('T')[0];
+        return new Date().toISOString().split("T")[0];
     }
 
     // Set default date to today when modal opens
@@ -185,10 +200,13 @@
 <div class="vaccinations-container">
     <div class="vaccinations-header">
         <h1>Vaccination Records</h1>
-        
+
         <div class="header-actions">
             {#if canCreateVaccinations()}
-                <button class="create-btn" on:click={() => showCreateModal = true}>
+                <button
+                    class="create-btn"
+                    on:click={() => (showCreateModal = true)}
+                >
                     Add Vaccination Record
                 </button>
             {/if}
@@ -208,27 +226,37 @@
                     class="filter-input"
                 />
             </div>
-            
+
             <div class="filter-group">
                 <label for="petFilter">Pet</label>
-                <select id="petFilter" bind:value={petFilter} class="filter-select">
+                <select
+                    id="petFilter"
+                    bind:value={petFilter}
+                    class="filter-select"
+                >
                     <option value="">All Pets</option>
                     {#each availablePets as pet (pet.id)}
-                        <option value={pet.id}>{pet.name} ({pet.species})</option>
+                        <option value={pet.id}
+                            >{pet.name} ({pet.species})</option
+                        >
                     {/each}
                 </select>
             </div>
-            
+
             <div class="filter-group">
                 <label for="vaccineFilter">Vaccine</label>
-                <select id="vaccineFilter" bind:value={vaccineFilter} class="filter-select">
+                <select
+                    id="vaccineFilter"
+                    bind:value={vaccineFilter}
+                    class="filter-select"
+                >
                     <option value="">All Vaccines</option>
                     {#each vaccines as vaccine (vaccine.id)}
                         <option value={vaccine.id}>{vaccine.name}</option>
                     {/each}
                 </select>
             </div>
-            
+
             <div class="filter-group">
                 <label for="dateFilter">Date</label>
                 <input
@@ -238,7 +266,7 @@
                     class="filter-input"
                 />
             </div>
-            
+
             <div class="filter-group">
                 <button class="clear-filters-btn" on:click={clearFilters}>
                     Clear Filters
@@ -255,16 +283,17 @@
         <div class="loading">Loading vaccination records...</div>
     {:else if filteredVaccinations.length === 0}
         <div class="no-data">
-            {searchQuery || dateFilter || petFilter || vaccineFilter 
-                ? 'No vaccination records found matching your filters.' 
-                : 'No vaccination records available yet.'}
+            {searchQuery || dateFilter || petFilter || vaccineFilter
+                ? "No vaccination records found matching your filters."
+                : "No vaccination records available yet."}
         </div>
     {:else}
         <div class="vaccinations-table-container">
             <table class="vaccinations-table">
                 <thead>
                     <tr>
-                        <th>Pet</th>
+                        <th>Name</th>
+                        <th>Breed</th>
                         <th>Vaccine</th>
                         <th>Date</th>
                         <th>Remarks</th>
@@ -279,15 +308,19 @@
                         <tr>
                             <td>
                                 <strong>{vaccination.pet_name}</strong>
-                                <br><span class="pet-species">{pets.find(p => p.id === vaccination.pet)?.species}</span>
                             </td>
+                            <td>{vaccination.pet_breed}</td>
                             <td>{vaccination.vaccine_name}</td>
                             <td>{formatDate(vaccination.date)}</td>
-                            <td>{vaccination.remarks || '-'}</td>
-                            <td>{ vaccination.owner_name || 'Unknown'}</td>
+                            <td>{vaccination.remarks || "-"}</td>
+                            <td>{vaccination.owner_name || "Unknown"}</td>
                             {#if canDeleteVaccination()}
                                 <td>
-                                    <button class="delete-btn" on:click={() => deleteVaccination(vaccination)}>
+                                    <button
+                                        class="delete-btn"
+                                        on:click={() =>
+                                            deleteVaccination(vaccination)}
+                                    >
                                         Delete
                                     </button>
                                 </td>
@@ -301,14 +334,35 @@
 
     <!-- Create Vaccination Modal -->
     {#if showCreateModal}
-        <div class="modal-overlay" role="dialog" tabindex="-1" on:click={() => { showCreateModal = false; resetForm(); }} on:keydown={(e) => e.key === 'Escape' && (showCreateModal = false, resetForm())}>
-            <div class="modal-content" on:click|stopPropagation on:keydown|stopPropagation>
+        <div
+            class="modal-overlay"
+            role="dialog"
+            tabindex="-1"
+            on:click={() => {
+                showCreateModal = false;
+                resetForm();
+            }}
+            on:keydown={(e) =>
+                e.key === "Escape" && ((showCreateModal = false), resetForm())}
+        >
+            <div
+                class="modal-content"
+                on:click|stopPropagation
+                on:keydown|stopPropagation
+            >
                 <h2>Add Vaccination Record</h2>
-                
-                <form on:submit|preventDefault={createVaccination} class="vaccination-form">
+
+                <form
+                    on:submit|preventDefault={createVaccination}
+                    class="vaccination-form"
+                >
                     <div class="form-group">
                         <label for="formPet">Pet *</label>
-                        <select id="formPet" bind:value={vaccinationForm.pet} required>
+                        <select
+                            id="formPet"
+                            bind:value={vaccinationForm.pet}
+                            required
+                        >
                             <option value={null}>Select a pet</option>
                             {#each availablePets as pet (pet.id)}
                                 <option value={pet.id}>
@@ -317,17 +371,23 @@
                             {/each}
                         </select>
                     </div>
-                    
+
                     <div class="form-group">
                         <label for="formVaccine">Vaccine *</label>
-                        <select id="formVaccine" bind:value={vaccinationForm.vaccine} required>
+                        <select
+                            id="formVaccine"
+                            bind:value={vaccinationForm.vaccine}
+                            required
+                        >
                             <option value={null}>Select a vaccine</option>
                             {#each vaccines as vaccine (vaccine.id)}
-                                <option value={vaccine.id}>{vaccine.name}</option>
+                                <option value={vaccine.id}
+                                    >{vaccine.name}</option
+                                >
                             {/each}
                         </select>
                     </div>
-                    
+
                     <div class="form-group">
                         <label for="formDate">Vaccination Date *</label>
                         <input
@@ -338,7 +398,7 @@
                             required
                         />
                     </div>
-                    
+
                     <div class="form-group">
                         <label for="formRemarks">Remarks</label>
                         <textarea
@@ -348,9 +408,16 @@
                             rows="3"
                         ></textarea>
                     </div>
-                    
+
                     <div class="form-actions">
-                        <button type="button" class="cancel-btn" on:click={() => { showCreateModal = false; resetForm(); }}>
+                        <button
+                            type="button"
+                            class="cancel-btn"
+                            on:click={() => {
+                                showCreateModal = false;
+                                resetForm();
+                            }}
+                        >
                             Cancel
                         </button>
                         <button type="submit" class="submit-btn">
@@ -391,7 +458,9 @@
         border-radius: 8px;
         cursor: pointer;
         font-weight: 600;
-        transition: transform 0.2s ease, box-shadow 0.2s ease;
+        transition:
+            transform 0.2s ease,
+            box-shadow 0.2s ease;
     }
 
     .create-btn:hover {

@@ -165,7 +165,14 @@
             }
 
             await userApi.updateUser(editingUser.id, formData);
-            await loadUsers();
+            
+            // Reload appropriate data based on user role
+            if ($user?.role === 'client') {
+                await loadOwnProfile();
+            } else {
+                await loadUsers();
+            }
+            
             resetForm();
             showProfileModal = false;
         } catch (err) {
@@ -353,40 +360,93 @@
                 </table>
             </div>
         {:else}
-            <!-- Profile Card (for clients) -->
-            <div class="profile-card">
-                {#each filteredUsers as u (u.id)}
-                    <div class="profile-info">
-                        <h2>{u.full_name}</h2>
-                        <div class="profile-details">
-                            <div class="detail-item">
-                                <strong>Username:</strong> @{u.username}
-                            </div>
-                            <div class="detail-item">
-                                <strong>Email:</strong> {u.email}
-                            </div>
-                            <div class="detail-item">
-                                <strong>Role:</strong> 
-                                <span class="role-badge {getRoleBadgeClass(u.role)}">
-                                    {u.role.charAt(0).toUpperCase() + u.role.slice(1)}
-                                </span>
-                            </div>
-                            <div class="detail-item">
-                                <strong>Member Since:</strong> {formatDate(u.date_joined)}
-                            </div>
-                            <div class="detail-item">
-                                <strong>Last Login:</strong> {formatDateTime(u.last_login)}
-                            </div>
-                        </div>
+            <!-- Profile Display (for clients) -->
+            {#each filteredUsers as u (u.id)}
+                <div class="profile-container">
+                    <div class="profile-header">
+                        <button class="back-btn" on:click={() => goto('/')}>
+                            ← Back to Dashboard
+                        </button>
                         
-                        <div class="profile-actions">
-                            <button class="edit-profile-btn" on:click={() => startEditProfile(u)}>
+                        <div class="header-actions">
+                            <button class="edit-btn" on:click={() => startEditProfile(u)}>
                                 Edit Profile
                             </button>
                         </div>
                     </div>
-                {/each}
-            </div>
+
+                    <div class="profile-content">
+                        <div class="profile-main-info">
+                            <div class="profile-image-section">
+                                {#if u.image_url}
+                                    <img src={u.image_url} alt={u.full_name} class="profile-image" />
+                                {:else}
+                                    <div class="profile-image-placeholder">👤</div>
+                                {/if}
+                            </div>
+
+                            <div class="profile-info-section">
+                                <h1>{u.full_name}</h1>
+                                <div class="profile-details">
+                                    <div class="detail-item">
+                                        <strong>Email:</strong> {u.email}
+                                    </div>
+                                    <div class="detail-item">
+                                        <strong>Phone:</strong> {u.phone_number || 'Not provided'}
+                                    </div>
+                                    <div class="detail-item">
+                                        <strong>Role:</strong> 
+                                        <span class="role-badge {getRoleBadgeClass(u.role)}">
+                                            {u.role.charAt(0).toUpperCase() + u.role.slice(1)}
+                                        </span>
+                                    </div>
+                                    <div class="detail-item">
+                                        <strong>Account Status:</strong>
+                                        <span class="status-badge {u.active ? 'status-active' : 'status-inactive'}">
+                                            {u.active ? 'Active' : 'Inactive'}
+                                        </span>
+                                    </div>
+                                    <div class="detail-item">
+                                        <strong>Member Since:</strong> {formatDate(u.created_at)}
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="profile-stats-section">
+                            <div class="section-header">
+                                <h2>Quick Links</h2>
+                            </div>
+                            
+                            <div class="quick-links">
+                                <a href="/pets" class="quick-link-card">
+                                    <div class="link-icon">🐾</div>
+                                    <div class="link-info">
+                                        <h3>My Pets</h3>
+                                        <p>View and manage your pets</p>
+                                    </div>
+                                </a>
+                                
+                                <a href="/vaccinations" class="quick-link-card">
+                                    <div class="link-icon">💉</div>
+                                    <div class="link-info">
+                                        <h3>Vaccinations</h3>
+                                        <p>Track vaccination records</p>
+                                    </div>
+                                </a>
+                                
+                                <a href="/vaccines" class="quick-link-card">
+                                    <div class="link-icon">🔬</div>
+                                    <div class="link-info">
+                                        <h3>Available Vaccines</h3>
+                                        <p>Browse vaccine information</p>
+                                    </div>
+                                </a>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            {/each}
         {/if}
     {/if}
 
@@ -735,53 +795,174 @@
         color: white;
     }
 
-    .profile-card {
+    .profile-container {
+        padding: 0;
+        max-width: 1200px;
+        margin: 0 auto;
+    }
+
+    .profile-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 2rem;
+    }
+
+    .back-btn {
+        background: none;
+        border: 2px solid #f3e8a6;
+        color: #b8860b;
+        padding: 0.5rem 1rem;
+        border-radius: 8px;
+        cursor: pointer;
+        transition: all 0.2s ease;
+        text-decoration: none;
+    }
+
+    .back-btn:hover {
+        background: #f3e8a6;
+    }
+
+    .header-actions {
+        display: flex;
+        gap: 0.5rem;
+    }
+
+    .profile-content {
         background: white;
         border-radius: 12px;
         border: 1px solid #f3e8a6;
-        padding: 2rem;
-        box-shadow: 0 2px 4px rgba(184, 134, 11, 0.1);
+        overflow: hidden;
+        box-shadow: 0 4px 6px rgba(184, 134, 11, 0.1);
     }
 
-    .profile-info h2 {
+    .profile-main-info {
+        display: grid;
+        grid-template-columns: 300px 1fr;
+        gap: 2rem;
+        padding: 2rem;
+    }
+
+    .profile-image-section {
+        display: flex;
+        justify-content: center;
+        align-items: flex-start;
+    }
+
+    .profile-image {
+        width: 250px;
+        height: 250px;
+        object-fit: cover;
+        border-radius: 50%;
+        border: 4px solid #f3e8a6;
+        box-shadow: 0 4px 8px rgba(184, 134, 11, 0.2);
+    }
+
+    .profile-image-placeholder {
+        width: 250px;
+        height: 250px;
+        background: linear-gradient(135deg, #f8f6f0 0%, #f3e8a6 100%);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 6rem;
+        border-radius: 50%;
+        border: 4px solid #f3e8a6;
+        box-shadow: 0 4px 8px rgba(184, 134, 11, 0.2);
+    }
+
+    .profile-info-section h1 {
         margin: 0 0 1.5rem 0;
         color: #b8860b;
-        font-size: 1.75rem;
+        font-size: 2.5rem;
+        font-weight: 700;
     }
 
     .profile-details {
         display: grid;
-        grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+        grid-template-columns: 1fr 1fr;
         gap: 1rem;
-        margin-bottom: 2rem;
     }
 
     .detail-item {
         background: #fff8e1;
-        padding: 1rem;
+        padding: 1.25rem;
         border-radius: 8px;
+        border-left: 4px solid #daa520;
     }
 
     .detail-item strong {
         color: #b8860b;
         display: block;
         margin-bottom: 0.5rem;
-    }
-
-    .profile-actions {
-        display: flex;
-        justify-content: center;
-    }
-
-    .edit-profile-btn {
-        background: linear-gradient(135deg, #daa520 0%, #b8860b 100%);
-        color: white;
-        border: none;
-        padding: 0.75rem 1.5rem;
-        border-radius: 8px;
-        cursor: pointer;
         font-weight: 600;
-        font-size: 1rem;
+    }
+
+    .profile-stats-section {
+        padding: 2rem;
+        border-top: 1px solid #f3e8a6;
+        background: #fffdf5;
+    }
+
+    .section-header {
+        margin-bottom: 1.5rem;
+    }
+
+    .section-header h2 {
+        margin: 0;
+        color: #b8860b;
+        font-size: 1.5rem;
+    }
+
+    .quick-links {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+        gap: 1.5rem;
+    }
+
+    .quick-link-card {
+        background: white;
+        border-radius: 12px;
+        padding: 1.5rem;
+        border: 2px solid #f3e8a6;
+        text-decoration: none;
+        color: inherit;
+        transition: all 0.3s ease;
+        display: flex;
+        align-items: center;
+        gap: 1rem;
+        box-shadow: 0 2px 4px rgba(184, 134, 11, 0.1);
+    }
+
+    .quick-link-card:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 8px 20px rgba(218, 165, 32, 0.15);
+        border-color: #daa520;
+    }
+
+    .link-icon {
+        font-size: 2.5rem;
+        width: 60px;
+        height: 60px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        background: #f8f6f0;
+        border-radius: 50%;
+        flex-shrink: 0;
+    }
+
+    .link-info h3 {
+        margin: 0 0 0.5rem 0;
+        color: #b8860b;
+        font-size: 1.1rem;
+        font-weight: 600;
+    }
+
+    .link-info p {
+        margin: 0;
+        color: #666;
+        font-size: 0.9rem;
     }
 
     .modal-overlay {
@@ -909,8 +1090,17 @@
             min-width: 900px;
         }
 
+        .profile-main-info {
+            grid-template-columns: 1fr;
+            text-align: center;
+        }
+
         .profile-details {
             grid-template-columns: 1fr;
+        }
+
+        .quick-links {
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
         }
     }
 
@@ -925,6 +1115,39 @@
 
         .user-actions {
             flex-direction: column;
+        }
+
+        .profile-header {
+            flex-direction: column;
+            gap: 1rem;
+            align-items: stretch;
+        }
+
+        .profile-image,
+        .profile-image-placeholder {
+            width: 200px;
+            height: 200px;
+            font-size: 4rem;
+        }
+
+        .profile-info-section h1 {
+            font-size: 2rem;
+        }
+
+        .quick-links {
+            grid-template-columns: 1fr;
+        }
+
+        .quick-link-card {
+            flex-direction: column;
+            text-align: center;
+            gap: 1rem;
+        }
+
+        .link-icon {
+            width: 50px;
+            height: 50px;
+            font-size: 2rem;
         }
     }
 </style>

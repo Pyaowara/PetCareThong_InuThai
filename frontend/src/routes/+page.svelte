@@ -43,17 +43,10 @@
                 vaccinationApi.getVaccinations()
             ]);
 
-            // Filter data based on user role
+            // For clients, the backend already filters data by user
+            // No need to filter on frontend since API handles role-based access
             let userPets = pets;
             let userVaccinations = vaccinations;
-            
-            if ($user?.role === 'client') {
-                userPets = pets.filter(pet => pet.user_id === $user?.id);
-                userVaccinations = vaccinations.filter(vaccination => {
-                    const pet = pets.find(p => p.id === vaccination.pet);
-                    return pet?.user_id === $user?.id;
-                });
-            }
 
             // Sort vaccinations by date (most recent first)
             userVaccinations.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
@@ -84,7 +77,7 @@
         if (hour >= 12 && hour < 17) greeting = 'Good afternoon';
         else if (hour >= 17) greeting = 'Good evening';
         
-        const name = $user.first_name || $user.full_name.split(' ')[0] || $user.full_name;
+        const name = $user.full_name.split(' ')[0] || $user.full_name;
         return `${greeting}, ${name}!`;
     }
 </script>
@@ -125,26 +118,25 @@
                 </div>
                 <a href="/pets" class="stat-link">View All</a>
             </div>
-
-            <div class="stat-card">
-                <div class="stat-icon">💉</div>
-                <div class="stat-content">
-                    <h3>{stats.totalVaccinations}</h3>
-                    <p>Vaccination Records</p>
-                </div>
-                <a href="/vaccinations" class="stat-link">View All</a>
-            </div>
-
-            {#if $user?.role === 'staff' || $user?.role === 'vet'}
+            {#if $user?.role === 'client'}
                 <div class="stat-card">
-                    <div class="stat-icon">🏥</div>
+                    <div class="stat-icon">💉</div>
                     <div class="stat-content">
-                        <h3>Active</h3>
-                        <p>System Status</p>
+                        <h3>{stats.totalVaccinations}</h3>
+                        <p>My Vaccination Records</p>
                     </div>
-                    <a href="/vaccines" class="stat-link">Manage</a>
+                    <a href="/vaccinations" class="stat-link">View All</a>
                 </div>
             {/if}
+
+            <div class="stat-card">
+                <div class="stat-icon">🏥</div>
+                <div class="stat-content">
+                    <h3>Vaccines</h3>
+                    <p>{($user?.role === 'staff' || $user?.role === 'vet') ? 'Vaccines Available' : 'Available Vaccines'}</p>
+                </div>
+                <a href="/vaccines" class="stat-link">{($user?.role === 'staff' || $user?.role === 'vet') ? 'Manage' : 'View'}</a>
+            </div>
 
             {#if $user?.role === 'staff'}
                 <div class="stat-card">
@@ -170,25 +162,31 @@
 
                 {#if $user?.role === 'staff' || $user?.role === 'vet'}
                     <a href="/vaccinations" class="action-card">
-                        <div class="action-icon">�</div>
+                        <div class="action-icon">📝</div>
                         <h4>Record Vaccination</h4>
                         <p>Add new vaccination records</p>
                     </a>
 
                     <a href="/vaccines" class="action-card">
-                        <div class="action-icon">�</div>
+                        <div class="action-icon">💉</div>
                         <h4>Manage Vaccines</h4>
                         <p>Add or update vaccine information</p>
                     </a>
                 {:else}
                     <a href="/vaccinations" class="action-card">
-                        <div class="action-icon">�</div>
+                        <div class="action-icon">📝</div>
                         <h4>View Vaccinations</h4>
                         <p>Check your pets' vaccination history</p>
                     </a>
 
+                    <a href="/vaccines" class="action-card">
+                        <div class="action-icon">💉</div>
+                        <h4>Available Vaccines</h4>
+                        <p>See what vaccines are available for your pets</p>
+                    </a>
+
                     <a href="/users" class="action-card">
-                        <div class="action-icon">�</div>
+                        <div class="action-icon">🪪</div>
                         <h4>My Profile</h4>
                         <p>Update your account information</p>
                     </a>
@@ -203,7 +201,7 @@
                 <div class="activity-list">
                     {#each stats.recentVaccinations as vaccination (vaccination.id)}
                         <div class="activity-item">
-                            <div class="activity-icon">�</div>
+                            <div class="activity-icon">💉</div>
                             <div class="activity-content">
                                 <p><strong>{vaccination.pet_name}</strong> received <strong>{vaccination.vaccine_name}</strong></p>
                                 <span class="activity-date">{formatDate(vaccination.date)}</span>

@@ -131,6 +131,7 @@ DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
 # CORS settings for Svelte frontend
 CORS_ALLOWED_ORIGINS = env.list('CORS_ALLOW_ORIGIN', default=[])
+CORS_ALLOW_CREDENTIALS = True
 
 # Simple REST Framework setup
 REST_FRAMEWORK = {

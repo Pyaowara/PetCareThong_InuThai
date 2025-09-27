@@ -12,7 +12,7 @@ class UserSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = User
-        fields = ['id', 'email', 'password', 'full_name', 'phone_number', 'role', 'image', 'image_url']
+        fields = ['id', 'email', 'password', 'full_name', 'phone_number', 'role', 'image', 'image_url', 'active', 'created_at']
 
     def get_image_url(self, obj):
         return obj.get_image_url()

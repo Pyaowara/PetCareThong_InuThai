@@ -262,7 +262,17 @@ class VaccinatedListSerializer(serializers.ModelSerializer):
 
 class BookAppointmentSerializer(serializers.ModelSerializer):
     user = serializers.PrimaryKeyRelatedField(read_only=True, required=False)
-    # pet = serializers.PrimaryKeyRelatedField(read_only=True)
     class Meta:
         model = Appointment
         fields = ['id', 'user', 'pet', 'purpose', 'remarks', 'date']
+
+class AppointmentSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Appointment
+        fields = '__all__'
+
+class UpdateAppointmentSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Appointment
+        fields = ['id', 'assigned_vet', 'status', 'vet_note']
+        

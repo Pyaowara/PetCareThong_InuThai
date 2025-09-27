@@ -29,5 +29,9 @@ urlpatterns = [
     path('service/<int:service_id>/', views.UpdateServiceView.as_view(), name='service_manage'),
 
     # Appointment
-    path('appointment/', views.BookAppointmentView.as_view(), name='service_manage'),
+    path('appointment/', views.AppointmentView.as_view(), name='appointment'),
+    path('appointment/book/', views.BookAppointmentView.as_view(), name='book_appointment'),
+    path('appointment/<int:appointment_id>/', views.AppointmentDetailView.as_view(), name='view_appointment'),
+    path('appointment/update/<int:appointment_id>/', views.UpdateAppointmentView.as_view(), name='update_appointment'),
+
 ]

@@ -180,7 +180,7 @@
 
     function canEdit(): boolean {
         if (!$user || !pet) return false;
-        return $user.role === 'staff' || $user.role === 'vet' || pet.user === $user.id;
+        return $user.role === 'staff' || pet.user === $user.id;
     }
 
     function canAddVaccination(): boolean {

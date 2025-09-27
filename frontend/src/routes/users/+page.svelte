@@ -29,6 +29,8 @@
         full_name: '',
         email: '',
         phone_number: '',
+        role: 'client' as 'client' | 'staff' | 'vet',
+        active: true,
         current_password: '',
         password: '',
         image: null as File | null
@@ -116,6 +118,8 @@
             full_name: targetUser.full_name,
             email: targetUser.email,
             phone_number: targetUser.phone_number || '',
+            role: targetUser.role,
+            active: targetUser.active,
             current_password: '',
             password: '',
             image: null
@@ -128,6 +132,8 @@
             full_name: '', 
             email: '', 
             phone_number: '', 
+            role: 'client',
+            active: true,
             current_password: '', 
             password: '', 
             image: null 
@@ -144,6 +150,12 @@
             formData.append('full_name', profileForm.full_name);
             formData.append('email', profileForm.email);
             if (profileForm.phone_number) formData.append('phone_number', profileForm.phone_number);
+            
+            // Staff can edit roles and active status for other users
+            if ($user?.role === 'staff' && editingUser.id !== $user.id) {
+                formData.append('role', profileForm.role);
+                formData.append('active', profileForm.active.toString());
+            }
             
             // For clients, current password is required
             if ($user?.role === 'client') {
@@ -207,6 +219,11 @@
 
     function canToggleUserStatus(targetUser: User): boolean {
         // Only staff can toggle status, and not their own
+        return $user?.role === 'staff' && targetUser.id !== $user?.id;
+    }
+
+    function canEditUserRole(targetUser: User): boolean {
+        // Only staff can edit roles, and not their own
         return $user?.role === 'staff' && targetUser.id !== $user?.id;
     }
 
@@ -485,6 +502,27 @@
                             bind:value={profileForm.phone_number}
                         />
                     </div>
+
+                    {#if $user?.role === 'staff' && editingUser.id !== $user.id}
+                        <div class="form-group">
+                            <label for="userRole">Role *</label>
+                            <select id="userRole" bind:value={profileForm.role} required>
+                                <option value="client">Client</option>
+                                <option value="staff">Staff</option>
+                                <option value="vet">Veterinarian</option>
+                            </select>
+                        </div>
+                        
+                        <div class="form-group">
+                            <label class="checkbox-label">
+                                <input
+                                    type="checkbox"
+                                    bind:checked={profileForm.active}
+                                />
+                                <span>Account Active</span>
+                            </label>
+                        </div>
+                    {/if}
 
                     {#if $user?.role === 'client'}
                         <div class="form-group">
@@ -1019,16 +1057,37 @@
         color: #333;
     }
 
-    .form-group input {
+    .form-group input,
+    .form-group select {
         padding: 0.75rem;
         border: 2px solid #f3e8a6;
         border-radius: 8px;
         font-size: 0.95rem;
+        background: white;
+        font-family: inherit;
     }
 
-    .form-group input:focus {
+    .form-group input:focus,
+    .form-group select:focus {
         outline: none;
         border-color: #daa520;
+    }
+
+    .checkbox-label {
+        display: flex !important;
+        flex-direction: row !important;
+        align-items: center;
+        gap: 0.5rem;
+        cursor: pointer;
+        font-weight: 600;
+        color: #333;
+    }
+
+    .checkbox-label input[type="checkbox"] {
+        width: auto;
+        padding: 0;
+        margin: 0;
+        transform: scale(1.2);
     }
 
     .form-actions {

@@ -31,8 +31,11 @@
         marks: '',
         chronic_conditions: '',
         neutered_status: false,
+        owner_id: null as number | null,
         image: null as File | null
     };
+    
+    let users: any[] = []; // For staff to select pet owner
 
     onMount(async () => {
         if (!$isAuthenticated) {
@@ -41,7 +44,21 @@
         }
         
         await loadPets();
+        
+        // Load users if staff (for owner selection)
+        if ($user?.role === 'staff') {
+            await loadUsers();
+        }
     });
+
+    async function loadUsers() {
+        try {
+            const { userApi } = await import('$lib/apiServices');
+            users = await userApi.getUsers();
+        } catch (err) {
+            console.error('Failed to load users:', err);
+        }
+    }
 
     async function loadPets() {
         try {
@@ -68,6 +85,7 @@
             if (newPet.allergic) formData.append('allergic', newPet.allergic);
             if (newPet.marks) formData.append('marks', newPet.marks);
             if (newPet.chronic_conditions) formData.append('chronic_conditions', newPet.chronic_conditions);
+            if (newPet.owner_id) formData.append('owner_id', newPet.owner_id.toString());
             if (newPet.image) formData.append('image', newPet.image);
 
             await petApi.createPet(formData);
@@ -83,6 +101,7 @@
                 marks: '', 
                 chronic_conditions: '', 
                 neutered_status: false, 
+                owner_id: null,
                 image: null 
             };
             showCreateForm = false;
@@ -114,7 +133,7 @@
 
     function canEditPet(pet: Pet): boolean {
         if (!$user) return false;
-        return $user.role === 'staff' || $user.role === 'vet';
+        return $user.role === 'staff';
     }
 
     $: filteredPets = pets.filter(pet => 
@@ -138,9 +157,11 @@
                 bind:value={searchTerm}
                 class="search-input"
             />
+            {#if $user?.role !== 'vet'}
             <button class="create-btn" on:click={() => showCreateForm = true}>
                 Add New Pet
             </button>
+            {/if}
         </div>
     </div>
 
@@ -157,6 +178,18 @@
                         <label for="name">Pet Name *</label>
                         <input type="text" id="name" bind:value={newPet.name} required />
                     </div>
+                    
+                    {#if $user?.role === 'staff'}
+                        <div class="form-group">
+                            <label for="owner">Pet Owner *</label>
+                            <select id="owner" bind:value={newPet.owner_id} required>
+                                <option value={null}>Select pet owner</option>
+                                {#each users as user (user.id)}
+                                    <option value={user.id}>{user.full_name} ({user.email})</option>
+                                {/each}
+                            </select>
+                        </div>
+                    {/if}
                     
                     <div class="form-row">
                         <div class="form-group">

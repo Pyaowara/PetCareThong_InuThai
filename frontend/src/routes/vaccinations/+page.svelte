@@ -8,6 +8,7 @@
         id: number;
         pet: number;
         pet_name: string;
+        pet_breed: string;
         vaccine: number;
         vaccine_name: string;
         date: string;
@@ -59,6 +60,9 @@
             vaccination.vaccine_name
                 .toLowerCase()
                 .includes(searchQuery.toLowerCase()) ||
+            vaccination.owner_name
+                .toLowerCase()
+                .includes(searchQuery.toLowerCase()) ||
             (vaccination.remarks &&
                 vaccination.remarks
                     .toLowerCase()
@@ -66,9 +70,9 @@
 
         const matchesDate = !dateFilter || vaccination.date === dateFilter;
         const matchesPet =
-            !petFilter || vaccination.pet.toString() === petFilter;
+            !petFilter || vaccination.pet_name === petFilter;
         const matchesVaccine =
-            !vaccineFilter || vaccination.vaccine.toString() === vaccineFilter;
+            !vaccineFilter || vaccination.vaccine_name === vaccineFilter;
 
         return matchesSearch && matchesDate && matchesPet && matchesVaccine;
     });
@@ -236,8 +240,8 @@
                 >
                     <option value="">All Pets</option>
                     {#each availablePets as pet (pet.id)}
-                        <option value={pet.id}
-                            >{pet.name} ({pet.species})</option
+                        <option value={pet.name}
+                            >{pet.name} ({pet.owner_name})</option
                         >
                     {/each}
                 </select>
@@ -252,7 +256,7 @@
                 >
                     <option value="">All Vaccines</option>
                     {#each vaccines as vaccine (vaccine.id)}
-                        <option value={vaccine.id}>{vaccine.name}</option>
+                        <option value={vaccine.name}>{vaccine.name}</option>
                     {/each}
                 </select>
             </div>
@@ -366,7 +370,7 @@
                             <option value={null}>Select a pet</option>
                             {#each availablePets as pet (pet.id)}
                                 <option value={pet.id}>
-                                    {pet.name} ({pet.species}) - {pet.user_full_name}
+                                    {pet.name} ({pet.breed}) - {pet.owner_name}
                                 </option>
                             {/each}
                         </select>

@@ -25,8 +25,8 @@ urlpatterns = [
     path('auth/profile/', views.UserProfileView.as_view(), name='user_profile'),
 
     #Service
-    path('service/', views.ServiceView.as_view(), name='service_create'),
-    path('service/<int:service_id>/', views.UpdateServiceView.as_view(), name='service_manage'),
+    path('services/', views.ServiceView.as_view(), name='service_create'),
+    path('services/<int:service_id>/', views.UpdateServiceView.as_view(), name='service_manage'),
 
     # Appointment
     path('appointment/', views.AppointmentView.as_view(), name='appointment'),

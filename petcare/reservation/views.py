@@ -632,7 +632,7 @@ class AppointmentView(APIView):
                 appointment = Appointment.objects.filter(assigned_vet=user_service.get_user()).select_related('user')
             else:
                 appointment = Appointment.objects.filter(user=user_service.get_user())
-            
+            appointment.order_by('status', '-date')
             serializer = AppointmentSerializer(appointment, many=True)
             return Response(serializer.data)
         except PermissionError as e:

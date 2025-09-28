@@ -288,6 +288,13 @@ class AppointmentSerializer(serializers.ModelSerializer):
     class Meta:
         model = Appointment
         fields = '__all__'
+class AppointmentListSerializer(serializers.ModelSerializer):
+    pet_name = serializers.CharField(source='pet.name', read_only=True)
+    owner_name = serializers.CharField(source='user.full_name', read_only=True)
+    owner_email = serializers.CharField(source='user.email', read_only=True)
+    class Meta:
+        model = Appointment
+        fields = ['id', 'date', 'pet_name', 'owner_name', 'status', 'purpose', 'owner_email']
 
 class UpdateAppointmentSerializer(serializers.ModelSerializer):
     class Meta:

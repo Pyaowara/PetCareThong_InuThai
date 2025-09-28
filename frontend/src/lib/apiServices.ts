@@ -118,3 +118,17 @@ export const serviceApi = {
     }),
     deleteService: (serviceId: number) => apiJson(`/services/${serviceId}/`, { method: 'DELETE' }),
 };
+
+export const appointmentApi = {
+    getAppointment: () => apiJson('/appointments/'),
+    bookAppointment: (appointmentData: any) => apiJson('/appointments/book/', {
+        method: 'POST',
+        body: JSON.stringify(appointmentData)
+    }),
+    getAppointmentDetail: (appointmentId: number) => apiJson(`/appointments/${appointmentId}/`),
+    updateAppointment: (appointmentId: number, appointmentData: any) => apiJson(`/appointments/update/${appointmentId}/`, {
+        method: 'POST',
+        body: JSON.stringify(appointmentData)
+    }),
+    deleteAppointment: (appointmentId: number) => apiJson(`/appointments/update/${appointmentId}/`, { method: 'DELETE' }),
+};

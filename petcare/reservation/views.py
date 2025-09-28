@@ -592,6 +592,7 @@ class BookAppointmentView(APIView):
         try:
             user_service = get_user_service(request)
             user_service.check_authentication()
+            print(request.data)
             # By Client
             if user_service.is_client():
                 request.user_service = user_service
@@ -607,9 +608,11 @@ class BookAppointmentView(APIView):
             # By staff
             elif user_service.is_staff():
                 serializer = BookAppointmentSerializer(data=request.data)
+                print(serializer)
                 if serializer.is_valid():
                     pet = serializer.validated_data['pet']
-                    if pet.user != serializer.validated_data['user']:
+                    print(pet.user.id, request.data['user'])
+                    if pet.user.id != serializer.data.get('user'):
                         return Response({'error': 'Wrong owner pet'}, status=status.HTTP_403_FORBIDDEN)
                     app = serializer.save()
                     return Response(BookAppointmentSerializer(app).data, status=status.HTTP_201_CREATED)
@@ -625,15 +628,21 @@ class AppointmentView(APIView):
         try:
             user_service = get_user_service(request)
             user_service.check_authentication()
-
+            owner_id = request.GET.get('owner_id')
+            status = request.GET.get('status')
+            print(owner_id, status)
             if user_service.is_staff():
                 appointment = Appointment.objects.all().select_related('user')
             elif user_service.is_vet():
                 appointment = Appointment.objects.filter(assigned_vet=user_service.get_user()).select_related('user')
             else:
                 appointment = Appointment.objects.filter(user=user_service.get_user())
+            if owner_id:
+                appointment = appointment.filter(user__id=owner_id)
+            if status:
+                appointment = appointment.filter(status=status)
             appointment.order_by('status', '-date')
-            serializer = AppointmentSerializer(appointment, many=True)
+            serializer = AppointmentListSerializer(appointment, many=True)
             return Response(serializer.data)
         except PermissionError as e:
             return Response({'error': str(e)}, status=status.HTTP_401_UNAUTHORIZED)

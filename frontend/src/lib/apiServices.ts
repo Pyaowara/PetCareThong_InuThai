@@ -4,6 +4,7 @@ import { apiJson, apiFormData, API_CONFIG } from './api';
 export const userApi = {
     // Get all users (Staff only)
     getUsers: () => apiJson('/users/'),
+    getClients: () => apiJson('/users/?role=client'),
     
     // Get current user profile
     getProfile: () => apiJson('/auth/profile/'),
@@ -126,8 +127,9 @@ export const appointmentApi = {
         body: JSON.stringify(appointmentData)
     }),
     getAppointmentDetail: (appointmentId: number) => apiJson(`/appointments/${appointmentId}/`),
-    updateAppointment: (appointmentId: number, appointmentData: any) => apiJson(`/appointments/update/${appointmentId}/`, {
-        method: 'POST',
+    editAppointment: (appointmentId: number, appointmentData: any) => apiJson(`/appointments/edit/${appointmentId}/`, {
+        method: 'PUT',
         body: JSON.stringify(appointmentData)
     }),
+    updateAppointment: (appointmentId: number) => apiJson(`/appointments/update/${appointmentId}/`),
 };

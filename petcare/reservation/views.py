@@ -15,10 +15,13 @@ class UserView(APIView):
         try:
             user_service = get_user_service(request)
             user_service.check_authentication()
+            role = request.GET.get('role')
             if not user_service.is_staff():
                 return Response({'error': 'Staff access required'}, status=status.HTTP_403_FORBIDDEN)
 
             users = User.objects.all()
+            if role and (role == "client"):
+                users = users.filter(role='client')
             serializer = UserSerializer(users, many=True)
             return Response(serializer.data)
         except PermissionError as e:
@@ -624,6 +627,45 @@ class BookAppointmentView(APIView):
                 return Response({'error': 'Permission denied'}, status=status.HTTP_403_FORBIDDEN)
         except PermissionError as e:
             return Response({'error': str(e)}, status=status.HTTP_401_UNAUTHORIZED)
+    
+    def put(self, request, appointment_id):
+        try:
+            user_service = get_user_service(request)
+            user_service.check_authentication()
+            user = user_service.get_user()
+            appointment = Appointment.objects.select_related('user').get(id=appointment_id)
+
+            # By Client
+            if user_service.is_client() and appointment.user == user:
+                request.user_service = user_service
+                print(request.data)
+                serializer = BookAppointmentSerializer(appointment, data=request.data, partial=True)
+                request.data['user'] = user.id
+                print(serializer.is_valid())
+                if serializer.is_valid():
+                    pet = serializer.validated_data.get('pet')
+                    if pet.user != user:
+                        return Response({'error': 'Wrong owner pet'}, status=status.HTTP_403_FORBIDDEN)
+                    app = serializer.save()
+                    return Response(BookAppointmentSerializer(app).data, status=status.HTTP_201_CREATED)
+                return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+            # By staff
+            elif user_service.is_staff():
+                serializer = BookAppointmentSerializer(appointment, data=request.data, partial=True)
+                if serializer.is_valid():
+                    pet = serializer.validated_data['pet']
+                    if pet.user.id != serializer.validated_data.get('user').id:
+                        return Response({'error': 'Wrong owner pet'}, status=status.HTTP_403_FORBIDDEN)
+                    app = serializer.save()
+                    return Response(BookAppointmentSerializer(app).data, status=status.HTTP_201_CREATED)
+                return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+            # Can't book
+            else:
+                return Response({'error': 'Permission denied'}, status=status.HTTP_403_FORBIDDEN)
+        except Appointment.DoesNotExist:
+            return Response({'error': 'Appointment not found'}, status=status.HTTP_404_NOT_FOUND)
+        except PermissionError as e:
+            return Response({'error': str(e)}, status=status.HTTP_401_UNAUTHORIZED)
 
 class AppointmentView(APIView):
     def get(self, request):
@@ -632,7 +674,6 @@ class AppointmentView(APIView):
             user_service.check_authentication()
             owner_id = request.GET.get('owner_id')
             status = request.GET.get('status')
-            print(owner_id, status)
             if user_service.is_staff():
                 appointment = Appointment.objects.all().select_related('user')
             elif user_service.is_vet():
@@ -657,6 +698,7 @@ class AppointmentView(APIView):
             return Response(serializer.data)
         except PermissionError as e:
             return Response({'error': str(e)}, status=status.HTTP_401_UNAUTHORIZED)
+
         
 class AppointmentDetailView(APIView):
     parser_classes = [MultiPartParser, JSONParser]

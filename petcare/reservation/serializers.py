@@ -285,6 +285,8 @@ class BookAppointmentSerializer(serializers.ModelSerializer):
         fields = ['id', 'user', 'pet', 'purpose', 'remarks', 'date']
 
 class AppointmentSerializer(serializers.ModelSerializer):
+    user_name = serializers.CharField(source='user.full_name', read_only=True)
+    assigned_vet = serializers.CharField(source='assigned_vet.full_name', read_only=True)
     class Meta:
         model = Appointment
         fields = '__all__'

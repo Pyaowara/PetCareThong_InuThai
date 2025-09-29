@@ -9,6 +9,7 @@
         pet_name: string;
         owner_name: string;
         owner_email: string;
+        assigned_vet: string;
         purpose?: string;
         status: string;
         date: string;
@@ -46,7 +47,6 @@
     let petFilter = "";
     let statusFilter = "";
     let showCreateModal = false;
-
     // Form data
     let appointmentForm = {
         user: null as number | null,
@@ -117,7 +117,7 @@
 
     async function loadUsers() {
         try {
-            users = await userApi.getUsers();
+            users = await userApi.getClients();
         } catch (err) {
             console.error("Failed to load user:", err);
         }
@@ -199,16 +199,8 @@
     }
     function formatDatetime(dateString: string): string {
         
-        const d = new Date(dateString);
+        return new Date(dateString).toISOString().replace("T", " ").split("Z")[0].slice(0, -7);
 
-        const day = d.getDate();
-        const month = d.getMonth() + 1;
-        const year = d.getFullYear();
-
-        const hours = d.getHours().toString().padStart(2, "0");
-        const minutes = d.getMinutes().toString().padStart(2, "0");
-
-        return `${day}/${month}/${year} ${hours}:${minutes}`;
     }
     function getTodayDate(): string {
         return new Date().toISOString().split("T")[0];
@@ -248,7 +240,7 @@
                 <input
                     type="text"
                     id="searchFilter"
-                    placeholder="Search by purpose, pet_name, status......."
+                    placeholder="Search by purpose, pet name, status......."
                     bind:value={searchQuery}
                     class="filter-input"
                 />
@@ -359,7 +351,7 @@
                                     class="detail-btn"
                                     on:click={() => goto(`/appointments/${appointment.id}`)}
                                 >
-                                    View AppointmentDetail
+                                    View
                                 </button>
                                 </td>
                             

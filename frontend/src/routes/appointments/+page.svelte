@@ -2,7 +2,7 @@
     import { onMount } from "svelte";
     import { goto } from "$app/navigation";
     import { isAuthenticated, user, authService } from "$lib/auth";
-    import { vaccinationApi, vaccineApi, petApi, appointmentApi, userApi } from "$lib/apiServices";
+    import { appointmentApi, vaccineApi, petApi, userApi } from "$lib/apiServices";
 
     interface Appointment {
         id: number;
@@ -14,17 +14,6 @@
         date: string;
     }
 
-    interface Vaccination {
-        id: number;
-        pet: number;
-        pet_name: string;
-        pet_breed: string;
-        vaccine: number;
-        vaccine_name: string;
-        date: string;
-        remarks?: string;
-        owner_name: string;
-    }
 
     interface Pet {
         id: number;
@@ -48,7 +37,6 @@
 
 
     let appointments: Appointment[] = [];
-    let vaccinations: Vaccination[] = [];
     let pets: Pet[] = [];
     let users: User[] = [];
     let isLoading = true;
@@ -91,7 +79,7 @@
 
         return matchesSearch && matchesDate && matchesPet && matchesStatus;
     });
-
+    
     $: availablePets = pets;
     $: availableUsers = user;
     onMount(async () => {
@@ -100,7 +88,7 @@
             return;
         }
 
-        await Promise.all([loadAppointments(), loadPets(), loadVaccinations(), loadUsers()]);
+        await Promise.all([loadAppointments(), loadPets(), loadUsers()]);
     });
 
     async function loadAppointments() {
@@ -135,13 +123,6 @@
         }
     }
 
-    async function loadVaccinations() {
-        try {
-            vaccinations = await vaccinationApi.getVaccinations();
-        } catch (err) {
-            console.error("Failed to load vaccines:", err);
-        }
-    }
 
     async function createAppointment() {
         if (
@@ -166,25 +147,25 @@
         }
     }
 
-    async function deleteAppointment(appointment: Appointment) {
-        if (
-            !confirm(
-                `Are you sure you want to delete this vaccination record for ${appointment.pet_name}?`,
-            )
-        ) {
-            return;
-        }
+    // async function deleteAppointment(appointment: Appointment) {
+    //     if (
+    //         !confirm(
+    //             `Are you sure you want to delete this appointment record for ${appointment.pet_name}?`,
+    //         )
+    //     ) {
+    //         return;
+    //     }
 
-        try {
-            await appointmentApi.deleteAppointment(appointment.id);
-            await loadAppointments();
-        } catch (err) {
-            error =
-                err instanceof Error
-                    ? err.message
-                    : "Failed to delete appointment record";
-        }
-    }
+    //     try {
+    //         await appointmentApi.deleteAppointment(appointment.id);
+    //         await loadAppointments();
+    //     } catch (err) {
+    //         error =
+    //             err instanceof Error
+    //                 ? err.message
+    //                 : "Failed to delete appointment record";
+    //     }
+    // }
 
     function resetForm() {
         appointmentForm = { pet: null, user: null, purpose: "", date: "", remarks: "" };
@@ -202,9 +183,9 @@
         return $user?.role === "staff" || $user?.role === "client";
     }
 
-    function candeleteAppointment(): boolean {
-        return $user?.role === "staff";
-    }
+    // function candeleteAppointment(): boolean {
+    //     return $user?.role === "staff";
+    // }
 
     function formatDate(dateString: string): string {
         const d = new Date(dateString);
@@ -243,8 +224,8 @@
     <title>Appointment Records - PetCare</title>
 </svelte:head>
 
-<div class="vaccinations-container">
-    <div class="vaccinations-header">
+<div class="appointments-container">
+    <div class="appointments-header">
         <h1>Appointment Records</h1>
 
         <div class="header-actions">
@@ -267,7 +248,7 @@
                 <input
                     type="text"
                     id="searchFilter"
-                    placeholder="Search by pet name, vaccine, or remarks..."
+                    placeholder="Search by purpose, pet_name, status......."
                     bind:value={searchQuery}
                     class="filter-input"
                 />
@@ -332,12 +313,12 @@
     {:else if filteredAppointments.length === 0}
         <div class="no-data">
             {searchQuery || dateFilter || petFilter || statusFilter
-                ? "No vaccination records found matching your filters."
-                : "No vaccination records available yet."}
+                ? "No Appointement records found matching your filters."
+                : "No Appointement records available yet."}
         </div>
     {:else}
-        <div class="vaccinations-table-container">
-            <table class="vaccinations-table">
+        <div class="appointments-table-container">
+            <table class="appointments-table">
                 <thead>
                     <tr>
                         <th>User</th>
@@ -345,10 +326,9 @@
                         <th>Pet</th>
                         <th>Date</th>
                         <th>Status</th>
-                        <!-- <th>Assigned Vet</th> -->
-                        {#if candeleteAppointment()}
-                            <th>Actions</th>
-                        {/if}
+                        <th>Assigned Vet</th>
+                        <th>Actions</th>
+                        
                     </tr>
                 </thead>
                 <tbody>
@@ -360,19 +340,29 @@
                             <td>{appointment.purpose}</td>
                             <td>{appointment.pet_name}</td>
                             <td>{formatDatetime(appointment.date)}</td>
-                            <td>{appointment.status}</td>
-                            <!-- <td>{appointment.assigned_vet || "Unknown"}</td> -->
-                            {#if candeleteAppointment()}
+                            <td><span class="status-badge status-{appointment.status}">{appointment.status}</span></td>
+                            <td>{appointment.assigned_vet || "Not Assigned now"}</td>
+                                    
+
+                            
                                 <td>
+                                    <!-- {#if candeleteAppointment()}
                                     <button
-                                        class="delete-btn"
-                                        on:click={() =>
+                                    class="delete-btn"
+                                    on:click={() =>
                                             deleteAppointment(appointment)}
                                     >
-                                        Delete
+                                    Delete
                                     </button>
+                                    {/if} -->
+                                <button
+                                    class="detail-btn"
+                                    on:click={() => goto(`/appointments/${appointment.id}`)}
+                                >
+                                    View AppointmentDetail
+                                </button>
                                 </td>
-                            {/if}
+                            
                         </tr>
                     {/each}
                 </tbody>
@@ -380,7 +370,7 @@
         </div>
     {/if}
 
-    <!-- Create Vaccination Modal -->
+    <!-- Create Appointment Modal -->
     {#if showCreateModal}
         <div
             class="modal-overlay"
@@ -398,32 +388,17 @@
                 on:click|stopPropagation
                 on:keydown|stopPropagation
             >
-                <h2>Add Vaccination Record</h2>
+                <h2>Add Appointment Record</h2>
 
                 <form
                     on:submit|preventDefault={createAppointment}
-                    class="vaccination-form"
+                    class="appointment-form"
                 >   
                     <div class="form-group">
                         <label for="formPurpose">Purpose</label>
-                            <input type="text" id="formPurpose" bind:value={appointmentForm.purpose} required placeholder="e.g., Golden Retriever, Persian Cat" />
+                            <input type="text" id="formPurpose" bind:value={appointmentForm.purpose} required placeholder="Purpose about your appointment" />
                     </div>
-                    <div class="form-group">
-                        <label for="formPet">Pet *</label>
-                        <select
-                            id="formPet"
-                            bind:value={appointmentForm.pet}
-                            required
-                        >
-                            <option value={null}>Select a pet</option>
-                            {#each availablePets as pet (pet.id)}
-                                <option value={pet.id}>
-                                    {pet.name} ({pet.breed}) - {pet.owner_name}
-                                </option>
-                            {/each}
-                        </select>
-                    </div>
-
+                    {#if $user?.role === 'staff'}
                     <div class="form-group">
                         <label for="formOwner">Owner *</label>
                         <select
@@ -439,11 +414,28 @@
                             {/each}
                         </select>
                     </div>
+                    {/if}
+                    <div class="form-group">
+                        <label for="formPet">Pet *</label>
+                        <select
+                            id="formPet"
+                            bind:value={appointmentForm.pet}
+                            required
+                        >
+                            <option value={null}>Select a pet</option>
+                            {#each availablePets as pet (pet.id)}
+                                <option value={pet.id}>
+                                    {pet.name} {pet.owner_name}
+                                </option>
+                            {/each}
+                        </select>
+                    </div>
+
 
                     <div class="form-group">
                         <label for="formDate">Appointment Date *</label>
                         <input
-                            type="date"
+                            type="datetime-local"
                             id="formDate"
                             bind:value={appointmentForm.date}
                             max={getTodayDate()}
@@ -456,7 +448,7 @@
                         <textarea
                             id="formRemarks"
                             bind:value={appointmentForm.remarks}
-                            placeholder="Optional remarks about the vaccination..."
+                            placeholder="Optional remarks about the appointment..."
                             rows="3"
                         ></textarea>
                     </div>
@@ -483,20 +475,53 @@
 </div>
 
 <style>
-    .vaccinations-container {
+    .status-badge {
+        padding: 0.25rem 0.75rem;
+        border-radius: 20px;
+        font-size: 0.85rem;
+        font-weight: 600;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+    }
+
+    .status-completed {
+        background: #e8f5e8;
+        color: #2d7d2d;
+    }
+
+    .status-confirmed {
+        background: #e3f2fd;
+        color: #1976d2;
+    }
+
+    .status-cancelled {
+        background: #fff3e0;
+        color: #e66909;
+    }
+
+    .status-booked {
+        background: #fff3e0;
+        color: #ebd126;
+    }
+
+    .status-rejected {
+        background: #ffebee;
+        color: #d32f2f;
+    }
+    .appointments-container {
         padding: 2rem;
         max-width: 1400px;
         margin: 0 auto;
     }
 
-    .vaccinations-header {
+    .appointments-header {
         display: flex;
         justify-content: space-between;
         align-items: center;
         margin-bottom: 2rem;
     }
 
-    .vaccinations-header h1 {
+    .appointments-header h1 {
         margin: 0;
         color: #b8860b;
         font-size: 2rem;
@@ -574,7 +599,7 @@
         white-space: nowrap;
     }
 
-    .vaccinations-table-container {
+    .appointments-table-container {
         background: white;
         border-radius: 12px;
         border: 1px solid #f3e8a6;
@@ -582,12 +607,12 @@
         box-shadow: 0 2px 4px rgba(184, 134, 11, 0.1);
     }
 
-    .vaccinations-table {
+    .appointments-table {
         width: 100%;
         border-collapse: collapse;
     }
 
-    .vaccinations-table th {
+    .appointments-table th {
         background: #f8f6f0;
         color: #b8860b;
         font-weight: 700;
@@ -596,13 +621,13 @@
         border-bottom: 2px solid #f3e8a6;
     }
 
-    .vaccinations-table td {
+    .appointments-table td {
         padding: 1rem;
         border-bottom: 1px solid #f3e8a6;
         vertical-align: top;
     }
 
-    .vaccinations-table tr:hover {
+    .appointments-table tr:hover {
         background: #fffdf5;
     }
 
@@ -614,6 +639,15 @@
 
     .delete-btn {
         background: #dc3545;
+        color: white;
+        border: none;
+        padding: 0.4rem 0.8rem;
+        border-radius: 4px;
+        cursor: pointer;
+        font-size: 0.85rem;
+    }
+    .detail-btn {
+        background: #1e3bce;
         color: white;
         border: none;
         padding: 0.4rem 0.8rem;
@@ -657,7 +691,7 @@
         font-size: 1.5rem;
     }
 
-    .vaccination-form {
+    .appointment-form {
         display: flex;
         flex-direction: column;
         gap: 1.25rem;
@@ -747,17 +781,17 @@
             gap: 1rem;
         }
 
-        .vaccinations-table-container {
+        .appointments-table-container {
             overflow-x: auto;
         }
 
-        .vaccinations-table {
+        .appointments-table {
             min-width: 800px;
         }
     }
 
     @media (max-width: 768px) {
-        .vaccinations-header {
+        .appointments-header {
             flex-direction: column;
             gap: 1rem;
         }

@@ -24,7 +24,7 @@
         </div>
         
         <div class="nav-links">
-            <a href="/appointment" class="nav-link">Appointment</a>
+            <a href="/appointments" class="nav-link">Appointment</a>
             <a href="/pets" class="nav-link">Pets</a>
             
             {#if $user?.role === 'staff' || $user?.role === 'vet'}

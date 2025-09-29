@@ -130,5 +130,4 @@ export const appointmentApi = {
         method: 'POST',
         body: JSON.stringify(appointmentData)
     }),
-    deleteAppointment: (appointmentId: number) => apiJson(`/appointments/update/${appointmentId}/`, { method: 'DELETE' }),
 };

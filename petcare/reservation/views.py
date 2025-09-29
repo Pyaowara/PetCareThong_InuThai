@@ -3,6 +3,7 @@ from rest_framework.parsers import MultiPartParser, JSONParser
 from rest_framework.response import Response
 from rest_framework import status
 from django.db import transaction
+from django.db.models import Case, When, Value, IntegerField
 from .models import *
 from .serializers import *
 from .services import *
@@ -596,23 +597,24 @@ class BookAppointmentView(APIView):
             # By Client
             if user_service.is_client():
                 request.user_service = user_service
+                print(request.data)
                 serializer = BookAppointmentSerializer(data=request.data)
                 user = user_service.get_user()
+                request.data['user'] = user.id
+                print(serializer.is_valid())
                 if serializer.is_valid():
-                    pet = serializer.validated_data['pet']
+                    pet = serializer.validated_data.get('pet')
                     if pet.user != user:
                         return Response({'error': 'Wrong owner pet'}, status=status.HTTP_403_FORBIDDEN)
-                    app = serializer.save(user = user)
+                    app = serializer.save()
                     return Response(BookAppointmentSerializer(app).data, status=status.HTTP_201_CREATED)
                 return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
             # By staff
             elif user_service.is_staff():
                 serializer = BookAppointmentSerializer(data=request.data)
-                print(serializer)
                 if serializer.is_valid():
                     pet = serializer.validated_data['pet']
-                    print(pet.user.id, request.data['user'])
-                    if pet.user.id != serializer.data.get('user'):
+                    if pet.user.id != serializer.validated_data.get('user').id:
                         return Response({'error': 'Wrong owner pet'}, status=status.HTTP_403_FORBIDDEN)
                     app = serializer.save()
                     return Response(BookAppointmentSerializer(app).data, status=status.HTTP_201_CREATED)
@@ -641,7 +643,16 @@ class AppointmentView(APIView):
                 appointment = appointment.filter(user__id=owner_id)
             if status:
                 appointment = appointment.filter(status=status)
-            appointment.order_by('status', '-date')
+            appointment = appointment.annotate(
+                status_order= Case(
+                    When(status='booked', then=Value(1)),
+                    When(status='confirmed', then=Value(2)),
+                    When(status='completed', then=Value(3)),
+                    When(status='cancelled', then=Value(4)),
+                    When(status='rejected', then=Value(5)),
+                    output_field=IntegerField(),
+                )
+            ).order_by('status_order', 'date')
             serializer = AppointmentListSerializer(appointment, many=True)
             return Response(serializer.data)
         except PermissionError as e:

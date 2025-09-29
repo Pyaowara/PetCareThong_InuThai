@@ -279,7 +279,7 @@ class VaccinatedListSerializer(serializers.ModelSerializer):
         fields = ['id', 'date', 'remarks', 'pet_name', 'pet_breed', 'vaccine_name', 'owner_name']
 
 class BookAppointmentSerializer(serializers.ModelSerializer):
-    user = serializers.PrimaryKeyRelatedField(read_only=True, required=False)
+    user = serializers.PrimaryKeyRelatedField(queryset=User.objects.filter(role='client'), required=False)
     class Meta:
         model = Appointment
         fields = ['id', 'user', 'pet', 'purpose', 'remarks', 'date']
@@ -292,9 +292,10 @@ class AppointmentListSerializer(serializers.ModelSerializer):
     pet_name = serializers.CharField(source='pet.name', read_only=True)
     owner_name = serializers.CharField(source='user.full_name', read_only=True)
     owner_email = serializers.CharField(source='user.email', read_only=True)
+    assigned_vet = serializers.CharField(source='assigned_vet.full_name', read_only=True)
     class Meta:
         model = Appointment
-        fields = ['id', 'date', 'pet_name', 'owner_name', 'status', 'purpose', 'owner_email']
+        fields = ['id', 'date', 'pet_name', 'owner_name', 'status', 'purpose', 'owner_email', 'assigned_vet']
 
 class UpdateAppointmentSerializer(serializers.ModelSerializer):
     class Meta:

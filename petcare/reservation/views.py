@@ -15,7 +15,8 @@ class UserView(APIView):
         try:
             user_service = get_user_service(request)
             user_service.check_authentication()
-            role = request.GET.get('role')
+            role = request.GET.get('roles')
+
             if not user_service.is_staff():
                 return Response({'error': 'Staff access required'}, status=status.HTTP_403_FORBIDDEN)
 
@@ -24,6 +25,24 @@ class UserView(APIView):
                 users = users.filter(role='client')
             serializer = UserSerializer(users, many=True)
             return Response(serializer.data)
+        except PermissionError as e:
+            return Response({'error': str(e)}, status=status.HTTP_401_UNAUTHORIZED)
+class UserViewByRole(APIView):
+    def get(self, request, role):
+        try:
+            user_service = get_user_service(request)
+            user_service.check_authentication()
+
+            
+            if not user_service.is_staff():
+                return Response({'error': 'Staff access required'}, status=status.HTTP_403_FORBIDDEN)
+
+            users = User.objects.all()
+            if role in ['client', 'staff', 'vet']:
+                users = users.filter(role=role)
+                serializer = UserSerializer(users, many=True)
+                return Response(serializer.data)
+            return Response({'error': f'Role {role} not found'}, status=status.HTTP_403_FORBIDDEN)
         except PermissionError as e:
             return Response({'error': str(e)}, status=status.HTTP_401_UNAUTHORIZED)
 
@@ -733,46 +752,95 @@ class AppointmentDetailView(APIView):
         except PermissionError as e:
             return Response({'error': str(e)}, status=status.HTTP_401_UNAUTHORIZED)
 
-class UpdateAppointmentView(APIView):
+# class UpdateAppointmentView(APIView):
+#     def put(self, request, appointment_id):
+#         try:
+#             user_service = get_user_service(request)
+#             user_service.check_authentication()
+
+#             appointment = Appointment.objects.select_related('user').get(id=appointment_id)
+
+#             if user_service.is_client():
+#                 serializer = UpdateAppointmentSerializer(appointment, data=request.data, partial=True)
+#                 if appointment.user != user_service.get_user():
+#                     return Response({'error': 'Permission denied'}, status=status.HTTP_403_FORBIDDEN)
+#                 if serializer.is_valid():
+#                     if serializer.validated_data.get('assigned_vet') or serializer.validated_data.get('vet_note'):
+#                         return Response({'error': 'Permission denied'}, status=status.HTTP_403_FORBIDDEN)
+#                     # client can update status only cancelled
+#                     if serializer.validated_data.get('status') != 'cancelled':
+#                         return Response({'error': 'client can\'t update status'}, status=status.HTTP_403_FORBIDDEN)
+#                     # can't update date if status is not booked
+#                     if serializer.validated_data.get('date') and serializer.validated_data.get('status') != 'booked':
+#                         return Response({'error': 'can\'t update date now'}, status=status.HTTP_403_FORBIDDEN)
+#                     app = serializer.save()
+#                     return Response(UpdateAppointmentSerializer(app).data)
+#             elif user_service.is_staff():
+#                 serializer = UpdateAppointmentSerializer(appointment, data=request.data, partial=True)
+#                 if serializer.is_valid():
+#                     if (not serializer.validated_data.get('assigned_vet')) and serializer.validated_data.get('status') == 'confirmed':
+#                         return Response({'error': 'Not found assigned vet & can\'t confirm'}, status=status.HTTP_403_FORBIDDEN)
+#                     app = serializer.save()
+#                     return Response(UpdateAppointmentSerializer(app).data)
+#             elif user_service.is_vet():
+#                 serializer = UpdateAppointmentSerializer(appointment, data=request.data, partial=True)
+#                 if appointment.assigned_vet != user_service.get_user() :
+#                     return Response({'error': 'Permission denied'}, status=status.HTTP_403_FORBIDDEN)
+#                 if serializer.is_valid():
+#                     if serializer.validated_data.get('status') not in ['completed', 'rejected'] or appointment.status != 'confirmed' or serializer.validated_data.get('date'):
+#                         return Response({'error': 'Permission denied'}, status=status.HTTP_403_FORBIDDEN)
+#                     app = serializer.save()
+#                     return Response(UpdateAppointmentSerializer(app).data)
+#             return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+#         except Appointment.DoesNotExist:
+#             return Response({'error': 'Appointment not found'}, status=status.HTTP_404_NOT_FOUND)
+#         except PermissionError as e:
+#             return Response({'error': str(e)}, status=status.HTTP_401_UNAUTHORIZED)
+
+class UpdateStatusAppointmentView(APIView):
     def put(self, request, appointment_id):
         try:
             user_service = get_user_service(request)
             user_service.check_authentication()
-
+            
             appointment = Appointment.objects.select_related('user').get(id=appointment_id)
-
+            print(request.data)
             if user_service.is_client():
-                serializer = UpdateAppointmentSerializer(appointment, data=request.data, partial=True)
+                serializer = UpdateStatusSerializer(appointment, data=request.data, partial=True)
                 if appointment.user != user_service.get_user():
                     return Response({'error': 'Permission denied'}, status=status.HTTP_403_FORBIDDEN)
                 if serializer.is_valid():
-                    if serializer.validated_data.get('assigned_vet') or serializer.validated_data.get('vet_note'):
+                    if serializer.validated_data.get('assigned_vet'):
                         return Response({'error': 'Permission denied'}, status=status.HTTP_403_FORBIDDEN)
-                    # client can update status only cancelled
-                    if serializer.validated_data.get('status') != 'cancelled':
+                    # client can update status only 'cancelled' or 'booked'
+                    status = serializer.validated_data.get('status')
+                    if status not in ['cancelled', 'booked']:
                         return Response({'error': 'client can\'t update status'}, status=status.HTTP_403_FORBIDDEN)
-                    # can't update date if status is not booked
-                    if serializer.validated_data.get('date') and serializer.validated_data.get('status') != 'booked':
-                        return Response({'error': 'can\'t update date now'}, status=status.HTTP_403_FORBIDDEN)
                     app = serializer.save()
-                    return Response(UpdateAppointmentSerializer(app).data)
+                    return Response(UpdateStatusSerializer(app).data)
+                return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
             elif user_service.is_staff():
-                serializer = UpdateAppointmentSerializer(appointment, data=request.data, partial=True)
+                serializer = UpdateStatusSerializer(appointment, data=request.data, partial=True)
+                print(serializer.is_valid())
                 if serializer.is_valid():
                     if (not serializer.validated_data.get('assigned_vet')) and serializer.validated_data.get('status') == 'confirmed':
                         return Response({'error': 'Not found assigned vet & can\'t confirm'}, status=status.HTTP_403_FORBIDDEN)
                     app = serializer.save()
-                    return Response(UpdateAppointmentSerializer(app).data)
+                    return Response(UpdateStatusSerializer(app).data)
+                return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
             elif user_service.is_vet():
-                serializer = UpdateAppointmentSerializer(appointment, data=request.data, partial=True)
-                if appointment.assigned_vet != user_service.get_user() :
+                serializer = UpdateStatusSerializer(appointment, data=request.data, partial=True)
+                if appointment.assigned_vet != user_service.get_user():
                     return Response({'error': 'Permission denied'}, status=status.HTTP_403_FORBIDDEN)
                 if serializer.is_valid():
-                    if serializer.validated_data.get('status') not in ['completed', 'rejected'] or appointment.status != 'confirmed' or serializer.validated_data.get('date'):
+                    status_val = serializer.validated_data.get('status')
+                    if status_val not in ['completed', 'rejected'] or appointment.status != 'confirmed' or serializer.validated_data.get('date'):
                         return Response({'error': 'Permission denied'}, status=status.HTTP_403_FORBIDDEN)
                     app = serializer.save()
-                    return Response(UpdateAppointmentSerializer(app).data)
-            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+                    return Response(UpdateStatusSerializer(app).data)
+                return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+            else:
+                return Response({'error': 'Permission denied'}, status=status.HTTP_403_FORBIDDEN)
         except Appointment.DoesNotExist:
             return Response({'error': 'Appointment not found'}, status=status.HTTP_404_NOT_FOUND)
         except PermissionError as e:

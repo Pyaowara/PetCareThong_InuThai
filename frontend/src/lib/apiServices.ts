@@ -4,7 +4,7 @@ import { apiJson, apiFormData, API_CONFIG } from './api';
 export const userApi = {
     // Get all users (Staff only)
     getUsers: () => apiJson('/users/'),
-    getClients: () => apiJson('/users/?role=client'),
+    getUsersByRole:(role:string) => apiJson(`/users/${role}/`),
     
     // Get current user profile
     getProfile: () => apiJson('/auth/profile/'),
@@ -131,5 +131,8 @@ export const appointmentApi = {
         method: 'PUT',
         body: JSON.stringify(appointmentData)
     }),
-    updateAppointment: (appointmentId: number) => apiJson(`/appointments/update/${appointmentId}/`),
+    updateStatus: (appointmentId: number, statusData:any) => apiJson(`/appointments/updatestatus/${appointmentId}/`, {
+        method: 'PUT',
+        body: JSON.stringify(statusData)
+    }),
 };

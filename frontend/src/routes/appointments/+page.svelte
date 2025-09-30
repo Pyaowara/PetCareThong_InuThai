@@ -2,7 +2,7 @@
     import { onMount } from "svelte";
     import { goto } from "$app/navigation";
     import { isAuthenticated, user, authService } from "$lib/auth";
-    import { appointmentApi, vaccineApi, petApi, userApi } from "$lib/apiServices";
+    import { appointmentApi, petApi, userApi } from "$lib/apiServices";
 
     interface Appointment {
         id: number;
@@ -35,11 +35,22 @@
         created_at: string;
         image_url?: string;
     }
+    interface Vet {
+        id: number;
+        email: string;
+        full_name: string;
+        phone_number?: string;
+        role: 'vet';
+        active: boolean;
+        created_at: string;
+        image_url?: string;
+    }
 
 
     let appointments: Appointment[] = [];
     let pets: Pet[] = [];
     let users: User[] = [];
+    let vets: Vet[] = [];
     let isLoading = true;
     let error = "";
     let searchQuery = "";
@@ -47,6 +58,7 @@
     let petFilter = "";
     let statusFilter = "";
     let showCreateModal = false;
+    let showConfirm = false;
     // Form data
     let appointmentForm = {
         user: null as number | null,
@@ -54,6 +66,11 @@
         date: "",
         remarks: "",
         purpose: "",
+    };
+    let statusData = {
+        id: null as number | null,
+        status: "",
+        assigned_vet: null as Vet | null,
     };
 
     $: filteredAppointments = appointments.filter((appointment) => {
@@ -81,14 +98,13 @@
     });
     
     $: availablePets = pets;
-    $: availableUsers = user;
     onMount(async () => {
         if (!$isAuthenticated) {
             goto("/login");
             return;
         }
 
-        await Promise.all([loadAppointments(), loadPets(), loadUsers()]);
+        await Promise.all([loadAppointments(), loadPets(), loadUsers(), loadVets()]);
     });
 
     async function loadAppointments() {
@@ -117,9 +133,16 @@
 
     async function loadUsers() {
         try {
-            users = await userApi.getClients();
+            users = await userApi.getUsersByRole('client');
         } catch (err) {
             console.error("Failed to load user:", err);
+        }
+    }
+    async function loadVets() {
+        try {
+            vets = await userApi.getUsersByRole('vet');
+        } catch (err) {
+            console.error("Failed to load vet:", err);
         }
     }
 
@@ -146,26 +169,67 @@
                     : "Failed to create appointment record";
         }
     }
+    async function confirmAppointment() {
+        if (
+            !statusData.id ||
+            !statusData.assigned_vet
+        ) {
+            error = "Assigned vet is required";
+            return;
+        }
 
-    // async function deleteAppointment(appointment: Appointment) {
-    //     if (
-    //         !confirm(
-    //             `Are you sure you want to delete this appointment record for ${appointment.pet_name}?`,
-    //         )
-    //     ) {
-    //         return;
-    //     }
+        try {
+            await appointmentApi.updateStatus(statusData.id, {status:"confirmed", assigned_vet: statusData.assigned_vet});
+            await loadAppointments();
+            statusData.id = null;
+            statusData.assigned_vet = null;
+            showConfirm = false;
+        } catch (err) {
+            error =
+                err instanceof Error
+                    ? err.message
+                    : "Failed to create appointment record";
+        }
+    }
 
-    //     try {
-    //         await appointmentApi.deleteAppointment(appointment.id);
-    //         await loadAppointments();
-    //     } catch (err) {
-    //         error =
-    //             err instanceof Error
-    //                 ? err.message
-    //                 : "Failed to delete appointment record";
-    //     }
-    // }
+    async function rejectAppointment(appointment: Appointment) {
+        if (
+            !confirm(
+                `Are you sure you want to rejected ${appointment.owner_name}'s appointment (${appointment.purpose}) at ${formatDatetime(appointment.date)}?`,
+            )
+        ) {
+            return;
+        }
+
+        try {
+            await appointmentApi.updateStatus(appointment.id, {status:"rejected"});
+            await loadAppointments();
+        } catch (err) {
+            error =
+                err instanceof Error
+                    ? err.message
+                    : "Failed to reject appointment record";
+        }
+    }
+    async function cancelAppointment(appointment: Appointment) {
+        if (
+            !confirm(
+                `Are you sure you want to cancel ${appointment.purpose} at ${formatDatetime(appointment.date)}?`,
+            )
+        ) {
+            return;
+        }
+
+        try {
+            await appointmentApi.updateStatus(appointment.id, {status:"cancelled"});
+            await loadAppointments();
+        } catch (err) {
+            error =
+                err instanceof Error
+                    ? err.message
+                    : "Failed to cancel appointment record";
+        }
+    }
 
     function resetForm() {
         appointmentForm = { pet: null, user: null, purpose: "", date: "", remarks: "" };
@@ -183,7 +247,7 @@
         return $user?.role === "staff" || $user?.role === "client";
     }
 
-    // function candeleteAppointment(): boolean {
+    // function canrejectAppointment(): boolean {
     //     return $user?.role === "staff";
     // }
 
@@ -316,7 +380,7 @@
                         <th>User</th>
                         <th>Purpose</th>
                         <th>Pet</th>
-                        <th>Date</th>
+                        <th>Appointment Date</th>
                         <th>Status</th>
                         <th>Assigned Vet</th>
                         <th>Actions</th>
@@ -338,21 +402,39 @@
 
                             
                                 <td>
-                                    <!-- {#if candeleteAppointment()}
+                                    {#if $user?.role === 'staff' &&  ['booked', 'confirmed'].includes(appointment.status)}
                                     <button
-                                    class="delete-btn"
+                                    class="reject-btn"
                                     on:click={() =>
-                                            deleteAppointment(appointment)}
+                                            rejectAppointment(appointment)}
                                     >
-                                    Delete
+                                    Reject
                                     </button>
-                                    {/if} -->
+                                    {/if}
+                                    {#if $user?.role === 'client' && ['booked', 'confirmed'].includes(appointment.status)}
+                                    <button
+                                    class="reject-btn"
+                                    on:click={() =>
+                                            cancelAppointment(appointment)}
+                                    >
+                                    Cancel
+                                    </button>
+                                    {/if}
                                 <button
                                     class="detail-btn"
                                     on:click={() => goto(`/appointments/${appointment.id}`)}
                                 >
                                     View
                                 </button>
+                                {#if $user?.role === 'staff' &&  appointment.status === 'booked'}
+                                    <button
+                                        class="confirm-btn"
+                                        on:click={() => (showConfirm = true, statusData.id = appointment.id)}
+                                    >
+                                    Confirm
+                                    </button>
+                                    {/if}
+                                    
                                 </td>
                             
                         </tr>
@@ -464,6 +546,66 @@
             </div>
         </div>
     {/if}
+    {#if showConfirm}
+        <div
+            class="modal-overlay"
+            role="dialog"
+            tabindex="-1"
+            on:click={() => {
+                showConfirm = false;
+                statusData.id = null;
+                statusData.assigned_vet = null;
+            }}
+            on:keydown={(e) =>
+                e.key === "Escape" && ((showConfirm = false), statusData.id = null,
+                statusData.assigned_vet = null)}
+        >
+            <div
+                class="modal-content"
+                on:click|stopPropagation
+                on:keydown|stopPropagation
+            >
+                <h2>Assign Vet</h2>
+
+                <form
+                    on:submit|preventDefault={confirmAppointment}
+                    class="confirm-form"
+                > 
+                    <div class="form-group">
+                        <label for="assigned_vet">Assigned vet *</label>
+                        <select
+                            id="assigned_vet"
+                            bind:value={statusData.assigned_vet}
+                            required
+                        >
+                            <option value={null}>Select a vet</option>
+                            {#each vets as vet (vet.id)}
+                                <option value={vet.id}
+                                    >{vet.full_name}</option
+                                >
+                            {/each}
+                        </select>
+                    </div>
+
+                    <div class="form-actions">
+                        <button
+                            type="button"
+                            class="cancel-btn"
+                            on:click={() => {
+                                showConfirm = false;
+                                statusData.assigned_vet = null;
+                            }}
+                        >
+                            Cancel
+                        </button>
+                        <button type="submit" class="assign-btn">
+                            Assign
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    {/if}
 </div>
 
 <style>
@@ -493,7 +635,7 @@
 
     .status-booked {
         background: #fff3e0;
-        color: #ebd126;
+        color: #c0a80b;
     }
 
     .status-rejected {
@@ -629,7 +771,7 @@
         font-style: italic;
     }
 
-    .delete-btn {
+    .reject-btn {
         background: #dc3545;
         color: white;
         border: none;
@@ -647,11 +789,25 @@
         cursor: pointer;
         font-size: 0.85rem;
     }
-
-    .delete-btn:hover {
+    .detail-btn:hover {
+        background: #0c2397;
+    }
+    .reject-btn:hover {
         background: #c82333;
     }
 
+    .confirm-btn {
+        background: #13852e;
+        color: white;
+        border: none;
+        padding: 0.4rem 0.8rem;
+        border-radius: 4px;
+        cursor: pointer;
+        font-size: 0.85rem;
+    }
+    .confirm-btn:hover {
+        background: #056b1d;
+    }
     .modal-overlay {
         position: fixed;
         top: 0;
@@ -688,7 +844,11 @@
         flex-direction: column;
         gap: 1.25rem;
     }
-
+    .confirm-form {
+        display: flex;
+        flex-direction: column;
+        gap: 1.25rem;
+    }
     .form-group {
         display: flex;
         flex-direction: column;
@@ -739,6 +899,15 @@
 
     .submit-btn {
         background: linear-gradient(135deg, #daa520 0%, #b8860b 100%);
+        color: white;
+        border: none;
+        padding: 0.75rem 1.5rem;
+        border-radius: 8px;
+        cursor: pointer;
+        font-weight: 600;
+    }
+    .assign-btn {
+        background: linear-gradient(135deg, #0a8841 0%, #2dc756 100%);
         color: white;
         border: none;
         padding: 0.75rem 1.5rem;

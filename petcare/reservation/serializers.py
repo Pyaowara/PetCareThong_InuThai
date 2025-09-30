@@ -299,8 +299,13 @@ class AppointmentListSerializer(serializers.ModelSerializer):
         model = Appointment
         fields = ['id', 'date', 'pet_name', 'owner_name', 'status', 'purpose', 'owner_email', 'assigned_vet']
 
-class UpdateAppointmentSerializer(serializers.ModelSerializer):
+# class UpdateAppointmentSerializer(serializers.ModelSerializer):
+#     class Meta:
+#         model = Appointment
+#         fields = ['id', 'assigned_vet', 'status', 'vet_note']
+class UpdateStatusSerializer(serializers.ModelSerializer):
+
     class Meta:
         model = Appointment
-        fields = ['id', 'assigned_vet', 'status', 'vet_note']
+        fields = ['id', 'status', 'assigned_vet']
         

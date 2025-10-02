@@ -66,6 +66,7 @@
         date: "",
         remarks: "",
         purpose: "",
+        assigned_vet: null as number | null,
     };
     let statusData = {
         id: null as number | null,
@@ -232,7 +233,7 @@
     }
 
     function resetForm() {
-        appointmentForm = { pet: null, user: null, purpose: "", date: "", remarks: "" };
+        appointmentForm = { pet: null, user: null, purpose: "", date: "", remarks: "" , assigned_vet: null};
         error = "";
     }
 
@@ -516,7 +517,23 @@
                             required
                         />
                     </div>
-
+                    {#if $user?.role === 'staff'}
+                    <div class="form-group">
+                        <label for="formVet">Assigned Vet *</label>
+                        <select
+                            id="formVet"
+                            bind:value={appointmentForm.assigned_vet}
+                            required
+                        >
+                            <option value={null}>Select a user</option>
+                            {#each vets as vet (vet.id)}
+                                <option value={vet.id}
+                                    >{vet.full_name}</option
+                                >
+                            {/each}
+                        </select>
+                    </div>
+                    {/if}
                     <div class="form-group">
                         <label for="formRemarks">Remarks</label>
                         <textarea

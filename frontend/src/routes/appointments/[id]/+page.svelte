@@ -239,142 +239,188 @@
     {/if}
 
     {#if isLoading}
-        <div class="loading">Loading Appointment details...</div>
+        <div class="loading">
+            <div class="loading-spinner"></div>
+            Loading Appointment details...
+        </div>
     {:else if !appointment}
         <div class="no-data">Appointment not found</div>
     {:else}
-        <div class="pet-header">
+        <div class="page-header">
             <button class="back-btn" on:click={() => goto('/appointments')}>
-                ← Back to Appointment
+                ← Back to Appointments
             </button>
-            
             <div class="header-actions">
                 {#if canEdit()}
-                    <button class="edit-btn" on:click={() => isEditing = true}>
+                    <button class="create-btn" on:click={() => isEditing = true}>
                         Edit Appointment
                     </button>
-                    
-                {/if} 
+                {/if}
             </div>
         </div>
 
-        <div class="pet-content">
-            <div class="vaccination-section">
-                <div class="pet-info-section">
-                    <div class="section-header">
-                        <h1>Appointment Information</h1>
-                    </div>
-                    <div class="additional-info">
+        <div class="purpose-header">
+            <h1>{appointment.purpose}</h1>
+            
+        </div>
+
+        <div class="main-content">
+            <!-- Appointment Info Card -->
+            <div class="info-card appointment-info">
+                <div class="card-header">
+                    <h2>📅 Appointment Details</h2>
+                    <span class="status-badge {appointment.status}">{appointment.status}</span>
+                </div>
+                <div class="card-content">
+                    <div class="info-grid">
                         <div class="info-item">
-                            <h2><strong>Purpose:</strong> {appointment.purpose}</h2>
+                            <span class="label">Time</span>
+                            <span class="value">{formatDatetime(appointment.date)}</span>
                         </div>
                         <div class="info-item">
-                            <h2><strong>Owner name:</strong> {appointment.user.full_name}</h2>
+                            <span class="label">Owner</span>
+                            <span class="value">{appointment.user.full_name}</span>
                         </div>
                         <div class="info-item">
-                            <h2><strong>Appointment time:</strong> {formatDatetime(appointment.date)}</h2>
+                            <span class="label">Assigned Vet</span>
+                            <span class="value">{appointment.assigned_vet?.full_name || 'Not assigned'}</span>
+                        </div>
+                        <div class="info-item full-width">
+                            <span class="label">Remarks</span>
+                            <span class="value remarks">{appointment.remarks || '-'}</span>
                         </div>
                         <div class="info-item">
-                            <h2><strong>Remarks:</strong> {appointment.remarks || '-'}</h2>
+                            <span class="label">Created</span>
+                            <span class="value timestamp">{formatDatetime(appointment.created_at)}</span>
                         </div>
                         <div class="info-item">
-                            <h2><strong>Status:</strong> {appointment.status}</h2>
-                        </div>
-                        <div class="info-item">
-                            <h2><strong>Assigned Vet:</strong> {appointment.assigned_vet?.full_name || 'Not assign now'}</h2>
-                        </div>
-                        <div class="info-item">
-                            <h2><strong>Create at:</strong> {formatDatetime(appointment.created_at)}</h2>
-                        </div>
-                        <div class="info-item">
-                            <h2><strong>Last update at:</strong> {formatDatetime(appointment.updated_at)}</h2>
+                            <span class="label">Last Updated</span>
+                            <span class="value timestamp">{formatDatetime(appointment.updated_at)}</span>
                         </div>
                     </div>
                 </div>
             </div>
-            
-            <div class="pet-main-info">
-                <div class="pet-image-section">
-                    {#if appointment.pet.image_url}
-                        <img src={appointment.pet.image_url} alt={appointment.pet.name} class="pet-image" />
-                    {:else} 
-                        <div class="pet-image-placeholder">🐾</div>
-                    {/if}
-                </div>
 
-                <div class="pet-info-section">
-                    <div class="info-item">
-                            <h2><strong>Pet name:</strong> {appointment.pet.name}</h2>
+            <!-- Pet Info Card -->
+            <div class="info-card pet-info">
+                <div class="card-header">
+                    <h2>🐾 Pet Information</h2>
+                </div>
+                <div class="card-content">
+                    <div class="pet-profile">
+                        <div class="pet-image-container">
+                            {#if appointment.pet.image_url}
+                                <img src={appointment.pet.image_url} alt={appointment.pet.name} />
+                            {:else}
+                                <div class="pet-image-placeholder">🐾</div>
+                            {/if}
+                        </div>
+                        <div class="pet-basic-info">
+                            <h3>{appointment.pet.name}</h3>
+                            <div class="pet-tags">
+                                <span class="tag breed">{appointment.pet.breed}</span>
+                                <span class="tag">{appointment.pet.gender}</span>
+                                <span class="tag">{appointment.pet.age} years old</span>
+                                <span class="tag neutered">{appointment.pet.neutered_status ? 'Neutered' : 'Not Neutered'}</span>
+                            </div>
+                        </div>
                     </div>
-                    <div class="pet-details">
+
+                    <div class="pet-details-grid">
                         <div class="detail-item">
-                            <strong>Breed:</strong> {appointment.pet.breed}
+                            <span class="label">Color</span>
+                            <span class="value">{appointment.pet.color}</span>
                         </div>
                         <div class="detail-item">
-                            <strong>Color:</strong> {appointment.pet.color}
-                        </div>
-                        <div class="detail-item">
-                            <strong>Gender:</strong> {appointment.pet.gender}
-                        </div>
-                        <div class="detail-item">
-                            <strong>Age:</strong> {appointment.pet.age} years old
-                        </div>
-                        <div class="detail-item">
-                            <strong>Birth Date:</strong> {formatDate(appointment.pet.birth_date)}
-                        </div>
-                        <div class="detail-item">
-                            <strong>Neutered/Spayed:</strong> {appointment.pet.neutered_status ? 'Yes' : 'No'}
+                            <span class="label">Birth Date</span>
+                            <span class="value">{formatDate(appointment.pet.birth_date)}</span>
                         </div>
                     </div>
-                    
+
                     {#if appointment.pet.allergic || appointment.pet.marks || appointment.pet.chronic_conditions}
-                        <div class="additional-info">
-                            <h3>Additional Information</h3>
+                        <div class="pet-medical-info">
+                            <h4>Medical Information</h4>
                             {#if appointment.pet.allergic}
-                                <div class="info-item">
-                                    <strong>Allergies:</strong> {appointment.pet.allergic}
+                                <div class="medical-item">
+                                    <span class="icon">🚨</span>
+                                    <div class="info">
+                                        <strong>Allergies</strong>
+                                        <p>{appointment.pet.allergic}</p>
+                                    </div>
                                 </div>
                             {/if}
                             {#if appointment.pet.marks}
-                                <div class="info-item">
-                                    <strong>Distinctive Marks:</strong> {appointment.pet.marks}
+                                <div class="medical-item">
+                                    <span class="icon">🔍</span>
+                                    <div class="info">
+                                        <strong>Distinctive Marks</strong>
+                                        <p>{appointment.pet.marks}</p>
+                                    </div>
                                 </div>
                             {/if}
                             {#if appointment.pet.chronic_conditions}
-                                <div class="info-item">
-                                    <strong>Chronic Conditions:</strong> {appointment.pet.chronic_conditions}
+                                <div class="medical-item">
+                                    <span class="icon">⚕️</span>
+                                    <div class="info">
+                                        <strong>Chronic Conditions</strong>
+                                        <p>{appointment.pet.chronic_conditions}</p>
+                                    </div>
                                 </div>
                             {/if}
                         </div>
                     {/if}
                 </div>
             </div>
+        </div>
 
-            <div class="vaccination-section">
-                <div class="section-header">
-                    <h2>Vaccination History {appointment.pet.total_vaccinations ? `(${appointment.pet.total_vaccinations})` : ''}</h2>
-                    
+        <!-- Replace the bottom section with this new layout -->
+        <div class="bottom-section">
+            <!-- Vaccination History Card -->
+            <div class="info-card vaccination-history">
+                <div class="card-header">
+                    <h2>💉 Vaccination Records</h2>
+                    {#if appointment.total_vaccinations}
+                        <span class="record-badge">{appointment.total_vaccinations} records</span>
+                    {/if}
                 </div>
-
-                {#if appointment.pet.vaccinations && appointment.pet.vaccinations.length > 0}
-                    <div class="vaccinations-list">
-                        {#each appointment.pet.vaccinations as vaccination (vaccination.id)}
-                            <div class="vaccination-card">
-                                <div class="vaccination-info">
-                                    <h4>{vaccination.vaccine_name}</h4>
-                                    <p class="vaccination-date">Date: {formatDate(vaccination.date)}</p>
-                                    {#if vaccination.remarks}
-                                        <p class="vaccination-notes">Remarks: {vaccination.remarks}</p>
-                                    {/if}
+                <div class="card-content">
+                    {#if appointment.vaccinations && appointment.vaccinations.length > 0}
+                        <div class="history-list">
+                            {#each appointment.vaccinations as vaccination (vaccination.id)}
+                                <div class="history-item">
+                                    <div class="history-marker"></div>
+                                    <div class="history-content">
+                                        <h4>{vaccination.vaccine_name}</h4>
+                                        <p class="date">📅 {formatDate(vaccination.date)}</p>
+                                        {#if vaccination.remarks}
+                                            <p class="remarks">📝 {vaccination.remarks}</p>
+                                        {/if}
+                                    </div>
                                 </div>
-                            </div>
-                        {/each}
+                            {/each}
+                        </div>
+                    {:else}
+                        <div class="empty-state">
+                            <span class="icon">📋</span>
+                            <p>No vaccination records found</p>
+                        </div>
+                    {/if}
+                </div>
+            </div>
+
+            <!-- Treatment History Card -->
+            <div class="info-card treatment-history">
+                <div class="card-header">
+                    <h2>🏥 Treatment Records</h2>
+                    <span class="record-badge">Past treatments</span>
+                </div>
+                <div class="card-content">
+                    <div class="empty-state">
+                        <span class="icon">📋</span>
+                        <p>No treatment records available</p>
                     </div>
-                {:else}
-                    <div class="no-vaccinations">
-                        No vaccination records yet.
-                    </div>
-                {/if}
+                    <!-- Placeholder for future treatment records -->
+                </div>
             </div>
         </div>
     {/if}
@@ -449,188 +495,261 @@
 </div>
 
 <style>
+    /* Base styles */
     .pet-detail-container {
         padding: 2rem;
-        max-width: 1200px;
+        max-width: 1400px;
         margin: 0 auto;
     }
 
-    .pet-header {
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-        margin-bottom: 2rem;
-    }
-
-    .back-btn {
-        background: none;
-        border: 2px solid #f3e8a6;
-        color: #b8860b;
-        padding: 0.5rem 1rem;
-        border-radius: 8px;
-        cursor: pointer;
-        transition: all 0.2s ease;
-    }
-
-    .back-btn:hover {
-        background: #f3e8a6;
-    }
-
-    .header-actions {
-        display: flex;
-        gap: 0.5rem;
-    }
-
-    .edit-btn {
-        background: #daa520;
-        color: white;
-        border: none;
-        padding: 0.5rem 1rem;
-        border-radius: 8px;
-        cursor: pointer;
-    }
-
-    .pet-content {
-        background: white;
-        border-radius: 12px;
-        border: 1px solid #f3e8a6;
-        overflow: hidden;
-        box-shadow: 0 4px 6px rgba(184, 134, 11, 0.1);
-    }
-
-    .pet-main-info {
-        display: grid;
-        grid-template-columns: 300px 1fr;
-        gap: 2rem;
-        padding: 2rem;
-    }
-
-    .pet-image {
-        width: 100%;
-        height: 300px;
-        object-fit: cover;
-        border-radius: 8px;
-    }
-
-    .pet-image-placeholder {
-        width: 100%;
-        height: 300px;
-        background: #f8f6f0;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        font-size: 4rem;
-        border-radius: 8px;
-    }
-
-    .pet-info-section h1 {
-        margin: 0 0 1.5rem 0;
-        color: #b8860b;
-        font-size: 2.5rem;
-    }
-
-    .pet-details {
-        display: grid;
-        grid-template-columns: 1fr 1fr;
-        gap: 1rem;
-    }
-
-    .detail-item {
-        background: #fff8e1;
-        padding: 1rem;
-        border-radius: 8px;
-    }
-
-    .detail-item strong {
-        color: #b8860b;
-    }
-
-    .additional-info {
-        margin-top: 2rem;
-        padding: 1.5rem;
-        background: #f8f6f0;
-        border-radius: 8px;
-        border-left: 4px solid #daa520;
-    }
-
-    .additional-info h3 {
-        margin: 0 0 1rem 0;
-        color: #b8860b;
-        font-size: 1.2rem;
-    }
-
-    .info-item {
-        margin-bottom: 1rem;
-    }
-
-    .info-item:last-child {
-        margin-bottom: 0;
-    }
-
-    .info-item strong {
-        color: #b8860b;
-    }
-
-
-
-    .vaccination-section {
-        padding: 2rem;
-        border-top: 1px solid #f3e8a6;
-    }
-
-    .section-header {
+    .page-header {
         display: flex;
         justify-content: space-between;
         align-items: center;
         margin-bottom: 1.5rem;
     }
 
-    .section-header h2 {
-        margin: 0;
-        color: #b8860b;
-        font-size: 1.5rem;
+    .purpose-header {
+        background: #fff8e1;
+        padding: 2rem;
+        border-radius: 12px;
+        margin-bottom: 2rem;
+        border: 1px solid #f3e8a6;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
     }
 
+    .purpose-header h1 {
+        color: #b8860b;
+        margin: 0;
+        font-size: 2.5rem;
+        font-weight: 700;
+        text-shadow: 1px 1px 0 rgba(0,0,0,0.1);
+    }
 
-
-    .vaccinations-list {
+    .main-content {
         display: grid;
-        grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+        grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+        gap: 2rem;
+        margin-bottom: 2rem;
+    }
+
+    /* Card Styles */
+    .info-card {
+        background: white;
+        border-radius: 16px;
+        box-shadow: 0 4px 12px rgba(184, 134, 11, 0.1);
+        overflow: hidden;
+    }
+
+    .card-header {
+        background: #fff8e1;
+        padding: 1.5rem;
+        border-bottom: 2px solid #f3e8a6;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+    }
+
+    .card-header h2 {
+        color: #b8860b;
+        margin: 0;
+        font-size: 1.3rem;
+    }
+
+    .card-content {
+        padding: 1.5rem;
+    }
+    .create-btn {
+        background: linear-gradient(135deg, #daa520 0%, #b8860b 100%);
+        color: white;
+        border: none;
+        padding: 0.75rem 1.5rem;
+        border-radius: 8px;
+        font-weight: 600;
+        cursor: pointer;
+        transition: transform 0.2s ease;
+    }
+
+    .create-btn:hover {
+        transform: translateY(-1px);
+    }
+    /* Status Badge */
+    .status-badge {
+        padding: 0.5rem 1rem;
+        border-radius: 20px;
+        font-size: 0.9rem;
+        font-weight: 600;
+        text-transform: uppercase;
+    }
+
+    .status-badge.booked { background: #f4eed5; color: #c0a80b; }
+    .status-badge.confirmed { background: #ebf2f9; color: #1976d2; }
+    .status-badge.completed { background: #e0f7e0; color: #2d7d2d; }
+    .status-badge.rejected { background: #f0dcdc; color: #d32f2f; }
+    .status-badge.cancelled { background: #efdfd3; color: #e66909; }
+
+    /* Info Grid */
+    .info-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
         gap: 1rem;
     }
 
-    .vaccination-card {
-        background: #fff8e1;
+    .info-item {
+        padding: 1rem;
+        background: #f8f6f0;
         border-radius: 8px;
-        padding: 1.5rem;
-        border-left: 4px solid #daa520;
     }
 
-    .vaccination-card h4 {
-        margin: 0 0 0.5rem 0;
-        color: #b8860b;
-        font-size: 1.1rem;
+    .info-item.full-width {
+        grid-column: 1 / -1;
     }
 
-    .vaccination-date {
-        margin: 0 0 0.5rem 0;
+    .label {
+        display: block;
         color: #666;
+        font-size: 0.9rem;
+        margin-bottom: 0.5rem;
+    }
+
+    .value {
+        color: #333;
         font-weight: 600;
     }
 
-    .vaccination-notes {
-        margin: 0;
-        color: #666;
+    .value.remarks {
         font-style: italic;
+        font-weight: normal;
     }
 
-    .no-vaccinations {
+    .value.timestamp {
+        font-size: 0.9rem;
+        color: #666;
+    }
+
+    /* Pet Profile */
+    .pet-profile {
+        display: flex;
+        gap: 1.5rem;
+        margin-bottom: 2rem;
+    }
+
+    .pet-image-container {
+        width: 120px;
+        height: 120px;
+        border-radius: 60px;
+        overflow: hidden;
+        border: 3px solid #f3e8a6;
+        flex-shrink: 0;
+    }
+
+    .pet-image-container img {
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+    }
+
+    .pet-tags {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.5rem;
+        margin-top: 0.5rem;
+    }
+
+    .tag {
+        background: #fff8e1;
+        color: #b8860b;
+        padding: 0.25rem 0.75rem;
+        border-radius: 15px;
+        font-size: 0.9rem;
+    }
+
+    .tag.breed {
+        background: #daa520;
+        color: white;
+    }
+
+    .tag.neutered {
+        background: #e8f5e9;
+        color: #2e7d32;
+    }
+
+    /* Medical Info */
+    .pet-medical-info {
+        margin-top: 2rem;
+        padding: 1.5rem;
+        background: #fff8e1;
+        border-radius: 12px;
+    }
+
+    .medical-item {
+        display: flex;
+        gap: 1rem;
+        padding: 1rem;
+        border-bottom: 1px dashed #daa520;
+    }
+
+    .medical-item:last-child {
+        border-bottom: none;
+    }
+
+    .medical-item .icon {
+        font-size: 1.5rem;
+    }
+
+    /* Vaccination Timeline */
+    .vaccination-timeline {
+        position: relative;
+        padding-left: 2rem;
+    }
+
+    .vaccination-item {
+        position: relative;
+        padding-bottom: 2rem;
+    }
+
+    .timeline-dot {
+        position: absolute;
+        left: -2rem;
+        width: 1rem;
+        height: 1rem;
+        background: #daa520;
+        border-radius: 50%;
+        border: 3px solid #fff8e1;
+    }
+
+    .vaccination-content {
+        background: #fff8e1;
+        padding: 1rem;
+        border-radius: 8px;
+        margin-left: 1rem;
+    }
+
+    /* Loading & No Data States */
+    .loading, .no-data-message {
         text-align: center;
-        padding: 2rem;
+        padding: 3rem;
         color: #666;
-        font-style: italic;
     }
 
+    .loading-spinner {
+        border: 3px solid #f3e8a6;
+        border-top: 3px solid #daa520;
+        border-radius: 50%;
+        width: 40px;
+        height: 40px;
+        animation: spin 1s linear infinite;
+        margin: 0 auto 1rem;
+    }
+
+    @keyframes spin {
+        0% { transform: rotate(0deg); }
+        100% { transform: rotate(360deg); }
+    }
+
+    /* Edit Appointment Modal styles */
     .modal-overlay {
         position: fixed;
         top: 0;
@@ -701,6 +820,19 @@
         border-radius: 8px;
         cursor: pointer;
     }
+    .back-btn {
+        background: none;
+        border: 2px solid #f3e8a6;
+        color: #b8860b;
+        padding: 0.5rem 1rem;
+        border-radius: 8px;
+        cursor: pointer;
+        transition: all 0.2s ease;
+    }
+
+    .back-btn:hover {
+        background: #f3e8a6;
+    }
 
     .submit-btn {
         background: linear-gradient(135deg, #daa520 0%, #b8860b 100%);
@@ -726,21 +858,113 @@
         color: #666;
         font-size: 1.1rem;
     }
+    .view-btn {
+        flex: 1;
+        background: #daa520;
+        color: white;
+        border: none;
+        padding: 0.5rem;
+        border-radius: 6px;
+        cursor: pointer;
+        font-size: 0.875rem;
+    }
+    /* New styles for bottom section */
+    .bottom-section {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 2rem;
+        margin-top: 2rem;
+    }
+
+    .history-list {
+        display: flex;
+        flex-direction: column;
+        gap: 1rem;
+    }
+
+    .history-item {
+        display: flex;
+        gap: 1rem;
+        padding: 1rem;
+        background: #fff8e1;
+        border-radius: 8px;
+        position: relative;
+        border-left: 4px solid #daa520;
+    }
+
+    .history-marker {
+        position: absolute;
+        left: -0.5rem;
+        top: 50%;
+        transform: translateY(-50%);
+        width: 1rem;
+        height: 1rem;
+        background: #daa520;
+        border: 3px solid #fff;
+        border-radius: 50%;
+    }
+
+    .history-content {
+        flex: 1;
+    }
+
+    .history-content h4 {
+        color: #b8860b;
+        margin: 0 0 0.5rem 0;
+    }
+
+    .record-badge {
+        background: #f3e8a6;
+        color: #b8860b;
+        padding: 0.25rem 0.75rem;
+        border-radius: 15px;
+        font-size: 0.9rem;
+    }
+
+    .empty-state {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        padding: 2rem;
+        color: #666;
+        gap: 0.5rem;
+    }
+
+    .empty-state .icon {
+        font-size: 2rem;
+        opacity: 0.5;
+    }
 
     @media (max-width: 768px) {
-        .pet-main-info {
-            grid-template-columns: 1fr;
-        }
-
-        .pet-details {
-            grid-template-columns: 1fr;
-        }
-
- 
-
-        .pet-header {
+        .purpose-header {
             flex-direction: column;
             gap: 1rem;
+            text-align: center;
+        }
+
+        .purpose-header h1 {
+            font-size: 2rem;
+        }
+
+        .content-grid {
+            grid-template-columns: 1fr;
+        }
+
+        .page-header {
+            flex-direction: column;
+            align-items: flex-start;
+            gap: 1rem;
+        }
+
+        .pet-profile {
+            flex-direction: column;
+            align-items: center;
+            text-align: center;
+        }
+
+        .bottom-section {
+            grid-template-columns: 1fr;
         }
     }
 </style>

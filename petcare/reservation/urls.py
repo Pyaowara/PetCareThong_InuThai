@@ -37,6 +37,6 @@ urlpatterns = [
     path('appointments/updatestatus/<int:appointment_id>/', views.UpdateStatusAppointmentView.as_view(), name='updatestatus_appointment'),
     path('appointments/edit/<int:appointment_id>/', views.BookAppointmentView.as_view(), name='edit_appointment'),
 
-    
+    path('appointments/treatment/<int:appointment_id>/', views.UpdateTreatmentView.as_view(), name='treatment_appointment'),
 
 ]

@@ -3,7 +3,7 @@
     import { goto } from '$app/navigation';
     import { page } from '$app/stores';
     import { isAuthenticated, user } from '$lib/auth';
-    import { appointmentApi, petApi, userApi, vaccineApi } from '$lib/apiServices';
+    import { appointmentApi, petApi, userApi, vaccineApi, serviceApi } from '$lib/apiServices';
 
     interface Appointment {
         id: number;
@@ -19,6 +19,7 @@
         updated_at:string;
         vaccinations?: Vaccination[];
         total_vaccinations?: number;
+        treatments?: Treatment[]; // <-- Add this line
     }
     interface User {
         id: number;
@@ -61,6 +62,19 @@
         name: string;
         description?: string;
     }
+    interface Service {
+        id: number;
+        title: string;
+        description: string;
+    }
+
+    interface Treatment {
+        id?: number;
+        service: number;
+        description: string;
+        vaccine: Vaccine | null; // Add this field
+    }
+
     let appointment: Appointment | null = null;
     // let pet: Pet | null = null;
     let vaccines: Vaccine[] = [];
@@ -68,8 +82,12 @@
     let error = '';
     let showAddVaccination = false;
     let isEditing = false;
+    let isUpdatingTreatment = false;
     let vets: User[] = [];
     let pets: Pet[] = [];
+    let services: Service[] = [];
+    let treatments: Treatment[] = [];
+    let vetNote: string = '';
 
     // Edit form data
     let editData = {
@@ -79,6 +97,13 @@
         status: '',
         assigned_vet: null as number | null,
         pet: null as Pet | null,
+    };
+
+    // Vaccination form data
+    let newVaccination = {
+        vaccine_id: null as number | null,
+        date: '',
+        remarks: ''
     };
 
     let selectedPetId: number | null = null;
@@ -94,13 +119,6 @@
         selectedPetId = appointment.pet?.id ?? null;
     }
 
-    // Vaccination form data
-    let newVaccination = {
-        vaccine_id: null as number | null,
-        date: '',
-        remarks: ''
-    };
-
     $: appointmentId = parseInt($page.params.id || '0');
     onMount(async () => {
         if (!$isAuthenticated) {
@@ -111,6 +129,7 @@
         await loadVaccines();
         await loadVets();
         await loadPets();
+        await loadServices();
     });
     async function loadPets() {
         try {
@@ -157,6 +176,14 @@
             vaccines = await vaccineApi.getVaccines();
         } catch (err) {
             console.error('Failed to load vaccines:', err);
+        }
+    }
+
+    async function loadServices() {
+        try {
+            services = await serviceApi.getServices();
+        } catch (err) {
+            console.error('Failed to load services:', err);
         }
     }
 
@@ -208,8 +235,41 @@
         }
     }
 
+    function addTreatmentCard() {
+        treatments = [...treatments, { 
+            service: 0, 
+            description: '',
+            vaccine: null 
+        }];
+    }
 
-    
+    function removeTreatmentCard(index: number) {
+        treatments = treatments.filter((_, i) => i !== index);
+    }
+
+    async function submitTreatment() {
+        if (!appointment) return;
+
+        try {
+            const payload = {
+                vet_note: vetNote,
+                treatment: treatments
+                    .filter(t => t.service !== 0)
+                    .map(t => ({
+                        ...t,
+                        vaccine: t.vaccine || null // Only include if selected
+                    })),
+                appointment : appointment.id
+            };
+            await appointmentApi.updateTreatment(appointment.id, payload);
+            await loadAppointment();
+            isUpdatingTreatment = false;
+            treatments = [];
+            vetNote = '';
+        } catch (err) {
+            error = err instanceof Error ? err.message : 'Failed to update treatment';
+        }
+    }
 
     function canEdit(): boolean {
         if (!$user || !appointment) return false;
@@ -255,7 +315,13 @@
                     <button class="create-btn" on:click={() => isEditing = true}>
                         Edit Appointment
                     </button>
+                    
                 {/if}
+                {#if $user?.role === 'vet' && appointment.status === 'confirmed'}
+                        <button class="treatment-btn" on:click={() => isUpdatingTreatment = true}>
+                            Update Treatment
+                        </button>
+                    {/if}
             </div>
         </div>
 
@@ -289,6 +355,14 @@
                             <span class="label">Remarks</span>
                             <span class="value remarks">{appointment.remarks || '-'}</span>
                         </div>
+                        {#if appointment.vet_note}
+                            <div class="info-item full-width">
+                                <span class="label">Vet Note</span>
+                                <span class="value remarks">{appointment.vet_note || '-'}</span>
+                            </div>
+                        {/if}
+                        {#if $user?.role === 'staff'}
+                            
                         <div class="info-item">
                             <span class="label">Created</span>
                             <span class="value timestamp">{formatDatetime(appointment.created_at)}</span>
@@ -297,6 +371,7 @@
                             <span class="label">Last Updated</span>
                             <span class="value timestamp">{formatDatetime(appointment.updated_at)}</span>
                         </div>
+                        {/if}
                     </div>
                 </div>
             </div>
@@ -415,10 +490,26 @@
                     <span class="record-badge">Past treatments</span>
                 </div>
                 <div class="card-content">
+                    {#if appointment.treatments && appointment.treatments.length > 0}
+                        <div class="history-list">
+                            {#each appointment.treatments as treatment (treatment.id)}
+                                <div class="history-item">
+                                    <div class="history-marker"></div>
+                                    <div class="history-content">
+                                        <h4>{treatment.service} {treatment.vaccine || ""}</h4>
+                                        {#if treatment.description}
+                                            <p class="remarks">📝 {treatment.description}</p>
+                                        {/if}
+                                    </div>
+                                </div>
+                            {/each}
+                        </div>
+                    {:else}
                     <div class="empty-state">
                         <span class="icon">📋</span>
                         <p>No treatment records available</p>
                     </div>
+                    {/if}
                     <!-- Placeholder for future treatment records -->
                 </div>
             </div>
@@ -485,6 +576,77 @@
                             Cancel
                         </button>
                         <button type="submit" class="submit-btn">Update Appointment</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    {/if}
+
+    <!-- Treatment Update Modal -->
+    {#if isUpdatingTreatment && appointment}
+        <div class="modal-overlay" role="dialog" tabindex="-1" 
+            on:click={() => isUpdatingTreatment = false} 
+            on:keydown={(e) => e.key === 'Escape' && (isUpdatingTreatment = false)}>
+            <div class="modal-content" role="document" tabindex="0" 
+                on:click|stopPropagation on:keydown|stopPropagation>
+                <div class="modal-header">
+                    <h2>Update Treatment</h2>
+                    <button class="close-btn" on:click={() => isUpdatingTreatment = false}>&times;</button>
+                </div>
+                <form on:submit|preventDefault={submitTreatment} class="treatment-form">
+                    <div class="form-group">
+                        <label for="vetNote">Vet Note</label>
+                        <textarea id="vetNote" bind:value={vetNote} rows="3" 
+                            placeholder="Enter veterinary notes here"></textarea>
+                    </div>
+
+                    <div class="treatments-container">
+                        {#each treatments as treatment, i (i)}
+                            <div class="treatment-card">
+                                <button type="button" class="remove-treatment" 
+                                    on:click={() => removeTreatmentCard(i)}>×</button>
+                                <div class="form-group">
+                                    <label for="service{i}">Service *</label>
+                                    <select id="service{i}" bind:value={treatment.service} required>
+                                        <option value={0}>Select Service</option>
+                                        {#each services as service}
+                                            <option value={service.id}>{service.title}</option>
+                                        {/each}
+                                    </select>
+                                </div>
+                                <div class="form-group">
+                                    <label for="description{i}">Description</label>
+                                    <textarea id="description{i}" 
+                                        bind:value={treatment.description} 
+                                        placeholder="Enter treatment description"></textarea>
+                                </div>
+                                {#if treatment.service === 1} <!-- Assuming 3 is the ID for "getVaccine" service -->
+                                <div class="form-group">
+                                    <label for="vaccine{i}">Vaccine</label>
+                                    <select id="vaccine{i}" bind:value={treatment.vaccine}>
+                                        <option value={null}>Select Vaccine</option>
+                                        {#each vaccines as vaccine}
+                                            <option value={vaccine.id}>{vaccine.name}</option>
+                                        {/each}
+                                    </select>
+                                </div>
+                                {/if}
+                            </div>
+                        {/each}
+                    </div>
+
+                    <button type="button" class="add-treatment-btn" on:click={addTreatmentCard}>
+                        + Add Treatment
+                    </button>
+
+                    <div class="form-actions">
+                        <button type="button" class="cancel-btn" 
+                            on:click={() => isUpdatingTreatment = false}>
+                            Cancel
+                        </button>
+                        <button type="submit" class="submit-btn">
+                            Update Treatment
+                        </button>
                     </div>
                 </form>
             </div>
@@ -936,35 +1098,77 @@
         opacity: 0.5;
     }
 
-    @media (max-width: 768px) {
-        .purpose-header {
-            flex-direction: column;
-            gap: 1rem;
-            text-align: center;
-        }
+    /* Treatment Update Modal styles */
+    .treatment-btn {
+        background: #20a7da;
+        color: white;
+        border: none;
+        padding: 0.5rem 1rem;
+        border-radius: 8px;
+        cursor: pointer;
+        margin-left: 0.5rem;
+    }
 
-        .purpose-header h1 {
-            font-size: 2rem;
-        }
+    .treatments-container {
+        display: flex;
+        flex-direction: column;
+        gap: 1rem;
+        margin: 1rem 0;
+    }
 
-        .content-grid {
-            grid-template-columns: 1fr;
-        }
+    .treatment-card {
+        background: #fff8e1;
+        padding: 1rem;
+        border-radius: 8px;
+        position: relative;
+        border: 1px solid #f3e8a6;
+    }
 
-        .page-header {
-            flex-direction: column;
-            align-items: flex-start;
-            gap: 1rem;
-        }
+    .remove-treatment {
+        position: absolute;
+        right: 0.5rem;
+        top: 0.5rem;
+        background: none;
+        border: none;
+        font-size: 1.5rem;
+        color: #c62828;
+        cursor: pointer;
+        padding: 0.2rem 0.5rem;
+        border-radius: 50%;
+    }
 
-        .pet-profile {
-            flex-direction: column;
-            align-items: center;
-            text-align: center;
-        }
+    .remove-treatment:hover {
+        background: #ffebee;
+    }
 
-        .bottom-section {
-            grid-template-columns: 1fr;
-        }
+    .add-treatment-btn {
+        width: 100%;
+        padding: 0.75rem;
+        background: #f3e8a6;
+        color: #b8860b;
+        border: 2px dashed #daa520;
+        border-radius: 8px;
+        cursor: pointer;
+        font-weight: 600;
+        margin: 1rem 0;
+    }
+
+    .add-treatment-btn:hover {
+        background: #fff8e1;
+    }
+
+    .modal-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 1.5rem;
+    }
+
+    .close-btn {
+        background: none;
+        border: none;
+        font-size: 1.5rem;
+        cursor: pointer;
+        color: #666;
     }
 </style>

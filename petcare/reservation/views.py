@@ -206,7 +206,7 @@ class ServiceView(APIView):
         try:
             user_service = get_user_service(request)
             user_service.check_authentication()
-            if not user_service.is_staff():
+            if not user_service.is_staff() and not user_service.is_vet():
                 return Response({'error': 'Permission denied'}, status=status.HTTP_403_FORBIDDEN)
             services = Service.objects.all()
             serializer = ServiceSerializer(services, many=True)
@@ -694,6 +694,7 @@ class AppointmentDetailView(APIView):
 
             serializer = AppointmentSerializer(appointment)
             pet = Pet.objects.select_related('user').get(id=appointment.pet.id)
+            treatment = Treatment.objects.filter(appointment=appointment)
             user = appointment.user
             assgned_vet = appointment.assigned_vet
             owner_serializer = UserSerializer(user)
@@ -701,6 +702,13 @@ class AppointmentDetailView(APIView):
             pet_serializer = PetSerializer(pet)
             vaccinations = Vaccinated.objects.filter(pet=pet).select_related('vaccine').order_by('-date')
             vaccination_serializer = VaccinatedSerializer(vaccinations, many=True)
+            treatment_serializer = TreatmentSerializer(treatment, many=True)
+            treatment = treatment_serializer.data.copy()
+            for i in treatment:
+                print(i)
+                i['service'] = Service.objects.get(id=i['service']).title
+                if i.get('vaccine'):
+                    i['vaccine'] = Vaccine.objects.get(id=i['vaccine']).name
 
             
             response_data = serializer.data.copy()
@@ -710,8 +718,9 @@ class AppointmentDetailView(APIView):
             response_data['assigned_vet'] = vet_serializer.data if assgned_vet else None
             response_data['vaccinations'] = vaccination_serializer.data
             response_data['total_vaccinations'] = len(vaccination_serializer.data)
+            response_data['treatments'] = treatment_serializer.data
+            response_data['total_treatments'] = len(treatment_serializer.data)
             # Client view Treatment 
-            
             return Response(response_data)
         except Appointment.DoesNotExist:
             return Response({'error': 'Appointment not found'}, status=status.HTTP_404_NOT_FOUND)
@@ -764,5 +773,64 @@ class UpdateStatusAppointmentView(APIView):
                 return Response({'error': 'Permission denied'}, status=status.HTTP_403_FORBIDDEN)
         except Appointment.DoesNotExist:
             return Response({'error': 'Appointment not found'}, status=status.HTTP_404_NOT_FOUND)
+        except PermissionError as e:
+            return Response({'error': str(e)}, status=status.HTTP_401_UNAUTHORIZED)
+
+class TreatmentView(APIView):
+    parser_classes = [MultiPartParser, JSONParser]
+    def get(self, request, appointment_id):
+        try:
+            user_service = get_user_service(request)
+            user_service.check_authentication()
+            
+            appointment = Appointment.objects.get(id=appointment_id)
+            queryset = Treatment.objects.select_related('appointment').filter(appointment=appointment).order_by('-id')
+            serializer = TreatmentSerializer(queryset, many=True)
+            
+            return Response(serializer.data)
+        except PermissionError as e:
+            return Response({'error': str(e)}, status=status.HTTP_401_UNAUTHORIZED)
+
+    def post(self, request, appointment_id):
+        try:
+            user_service = get_user_service(request)
+            user_service.check_authentication()
+            if not user_service.is_vet():
+                return Response({'error': 'Vet access required to create treatment records'}, status=status.HTTP_403_FORBIDDEN)
+            serializer = TreatmentSerializer(data=request.data)
+            if serializer.is_valid():
+                treatment = serializer.save()
+                return Response({
+                    'message': 'Treatment record created successfully',
+                    'treatment': TreatmentSerializer(treatment).data
+                }, status=status.HTTP_201_CREATED)
+            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+        except PermissionError as e:
+            return Response({'error': str(e)}, status=status.HTTP_401_UNAUTHORIZED)
+
+class UpdateTreatmentView(APIView):
+    parser_classes = [MultiPartParser, JSONParser]
+
+    def post(self, request, appointment_id):
+        try:
+            user_service = get_user_service(request)
+            user_service.check_authentication()
+            appointment = Appointment.objects.get(id=appointment_id)
+            if not user_service.is_vet():
+                return Response({'error': 'Vet access required to update treatment records'}, status=status.HTTP_403_FORBIDDEN)
+            if appointment.assigned_vet != user_service.get_user():
+                return Response({'error': 'Permission denied'}, status=status.HTTP_403_FORBIDDEN)
+            if appointment.status != 'confirmed':
+                return Response({'error': 'Can\'t add treatment to appointment that not confirmed'}, status=status.HTTP_403_FORBIDDEN)
+            serializer = UpdateTreatmentSerializer(data=request.data, context={'appointment_id': appointment.id})
+            if serializer.is_valid():
+                treatments = serializer.save()
+                return Response({
+                    'message': 'Treatment record(s) created successfully',
+                    'treatments': TreatmentSerializer(treatments['created_treatments'], many=True).data
+                }, status=status.HTTP_201_CREATED)
+            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+        except Appointment.DoesNotExist:
+            return Response({'error': 'Appointment record not found'}, status=status.HTTP_404_NOT_FOUND)
         except PermissionError as e:
             return Response({'error': str(e)}, status=status.HTTP_401_UNAUTHORIZED)

@@ -135,4 +135,8 @@ export const appointmentApi = {
         method: 'PUT',
         body: JSON.stringify(statusData)
     }),
+    updateTreatment: (appointmentId: number, treatmentData:any) => apiJson(`/appointments/treatment/${appointmentId}/`, {
+        method: 'POST',
+        body: JSON.stringify(treatmentData)
+    }),
 };

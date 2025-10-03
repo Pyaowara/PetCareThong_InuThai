@@ -401,7 +401,7 @@ class TreatmentSerializer(serializers.ModelSerializer):
     def create(self, validated_data):
         appointment = validated_data.get('appointment')
         service = validated_data.get('service')
-        getvaccine_service = Service.objects.get(title__iexact='getVaccine')
+        
 
         if not appointment:
             raise serializers.ValidationError({'appointment': 'Appointment is required for treatment.'})
@@ -409,7 +409,7 @@ class TreatmentSerializer(serializers.ModelSerializer):
             raise serializers.ValidationError({'appointment': 'Treatment can only be added to confirmed appointments.'})
         
         with transaction.atomic(): 
-            if service == getvaccine_service:
+            if service.title.lower() == 'getvaccine':
                 vaccine = validated_data.get('vaccine')
                 if not vaccine:
                     raise serializers.ValidationError({'vaccine': 'Vaccine is required when service is "getVaccine".'})
@@ -450,7 +450,6 @@ class UpdateTreatmentSerializer(serializers.Serializer):
 
             created_treatments = []
             for treatment_data in treatments_data:
-                
                 print(treatment_data)
                 treatment_data['appointment'] = appointment.id
                 if 'service' in treatment_data and isinstance(treatment_data['service'], Service):

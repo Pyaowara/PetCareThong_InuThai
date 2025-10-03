@@ -152,7 +152,11 @@ class ServiceSerializer(serializers.ModelSerializer):
     class Meta:
         model = Service
         fields = ['id', 'title', 'description']
-
+    def validate_title(self, attrs):
+        print('title', attrs)
+        if Service.objects.filter(title__iexact=attrs):
+            raise serializers.ValidationError(f'{attrs} has already used')
+        return attrs
 class PetSerializer(serializers.ModelSerializer):
     image = serializers.ImageField(required=False, write_only=True)
     image_url = serializers.SerializerMethodField()
@@ -277,3 +281,190 @@ class VaccinatedListSerializer(serializers.ModelSerializer):
     class Meta:
         model = Vaccinated
         fields = ['id', 'date', 'remarks', 'pet_name', 'pet_breed', 'vaccine_name', 'owner_name']
+
+class BookAppointmentSerializer(serializers.ModelSerializer):
+    user = serializers.PrimaryKeyRelatedField(queryset=User.objects.filter(role='client'), required=False)
+    assigned_vet = serializers.PrimaryKeyRelatedField(queryset=User.objects.filter(role='vet'), required=False, allow_null=True)
+    class Meta:
+        model = Appointment
+        fields = ['id', 'user', 'pet', 'purpose', 'remarks', 'date', 'assigned_vet']
+
+    def validate_user(self, value):
+        request = self.context.get('request', None)
+        user_service = getattr(request, 'user_service', None) if request else None
+        if user_service:
+            if user_service.is_staff():
+                if not value:
+                    raise serializers.ValidationError('Owner (user) is required for staff booking.')
+                else:
+                    if value.role != 'client':
+                        raise serializers.ValidationError('Selected user is not a client.')
+        return value
+
+    def validate_assigned_vet(self, value):
+        request = self.context.get('request', None)
+        user_service = getattr(request, 'user_service', None) if request else None
+        if user_service:
+            if user_service.is_staff():
+                if not value:
+                    raise serializers.ValidationError('Staff must assign a veterinarian (assigned_vet).')
+                else: 
+                    if value.role != 'vet':
+                        raise serializers.ValidationError('Assigned user is not a veterinarian.')
+            else:
+                if value is not None:
+                    raise serializers.ValidationError('Cannot assign a veterinarian.')
+        return value
+
+    def validate_pet(self, value):
+        request = self.context.get('request', None)
+        user_service = getattr(request, 'user_service', None) if request else None
+        if user_service and user_service.is_staff():
+            user = self.initial_data.get('user')
+            if user:
+                try:
+                    user_obj = User.objects.get(pk=user)
+                    if value.user.id != user_obj.id:
+                        raise serializers.ValidationError('Pet owner does not match selected user.')
+                except User.DoesNotExist:
+                    raise serializers.ValidationError('Selected user does not exist.')
+        return value
+
+    def create(self, validated_data):
+        request = self.context.get('request', None)
+        user_service = getattr(request, 'user_service', None) if request else None
+
+        if user_service:
+            if user_service.is_client():
+                validated_data['user'] = user_service.get_user()
+                validated_data['status'] = 'booked'
+                validated_data['assigned_vet'] = None
+            elif user_service.is_staff():
+                if not validated_data.get('user'):
+                    raise serializers.ValidationError({'user': 'Owner (user) is required for staff booking.'})
+                if not validated_data.get('assigned_vet'):
+                    raise serializers.ValidationError({'assigned_vet': 'Staff must assign a veterinarian (assigned_vet).'})
+                validated_data['status'] = 'confirmed'
+
+        appointment = Appointment.objects.create(**validated_data)
+        return appointment
+
+    def update(self, instance, validated_data):
+        request = self.context.get('request', None)
+        user_service = getattr(request, 'user_service', None) if request else None
+        if user_service and user_service.is_client():
+            if not validated_data.get('user'):
+                validated_data['user'] = user_service.get_user()
+            validated_data['assigned_vet'] = None
+        if user_service and user_service.is_staff():
+            status = request.data.get('status') 
+            if not status:
+                raise serializers.ValidationError({'status': 'Staff must provide status.'})
+            validated_data['status'] = status
+            if status == 'confirmed' and not validated_data.get('assigned_vet'):
+                raise serializers.ValidationError({'assigned_vet': 'Staff must assign a veterinarian (assigned_vet) when status is confirmed.'})
+            
+
+        for attr, value in validated_data.items():
+            setattr(instance, attr, value)
+        instance.save()
+        return instance
+
+class AppointmentSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Appointment
+        fields = '__all__'
+
+class AppointmentListSerializer(serializers.ModelSerializer):
+    pet_name = serializers.CharField(source='pet.name', read_only=True)
+    owner_name = serializers.CharField(source='user.full_name', read_only=True)
+    owner_email = serializers.CharField(source='user.email', read_only=True)
+    assigned_vet = serializers.CharField(source='assigned_vet.full_name', read_only=True)
+    class Meta:
+        model = Appointment
+        fields = ['id', 'date', 'pet_name', 'owner_name', 'status', 'purpose', 'owner_email', 'assigned_vet']
+
+
+class UpdateStatusSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Appointment
+        fields = ['id', 'status', 'assigned_vet']
+
+class TreatmentSerializer(serializers.ModelSerializer):
+    vaccine = serializers.PrimaryKeyRelatedField(queryset=Vaccine.objects.all(), required=False, allow_null=True)
+    appointment = serializers.PrimaryKeyRelatedField(queryset=Appointment.objects.all(), required=False)
+    
+    class Meta:
+        model = Treatment
+        fields = ['id', 'appointment', 'description', 'service', 'vaccine']
+
+    def create(self, validated_data):
+        appointment = validated_data.get('appointment')
+        service = validated_data.get('service')
+        
+
+        if not appointment:
+            raise serializers.ValidationError({'appointment': 'Appointment is required for treatment.'})
+        if appointment.status != 'confirmed':
+            raise serializers.ValidationError({'appointment': 'Treatment can only be added to confirmed appointments.'})
+        
+        with transaction.atomic(): 
+            if service.title.lower() == 'getvaccine':
+                vaccine = validated_data.get('vaccine')
+                if not vaccine:
+                    raise serializers.ValidationError({'vaccine': 'Vaccine is required when service is "getVaccine".'})
+                Vaccinated.objects.create(
+                    pet=appointment.pet,
+                    vaccine=vaccine,
+                    date=appointment.date.date(),
+                    remarks=f'Vaccination administered during appointment ({appointment.purpose}).'
+                )
+            if service.title.lower() == 'neutering/spaying':
+                if appointment.pet.neutered_status:
+                    raise serializers.ValidationError({'pet': 'Pet is already neutered/spayed.'})
+                else:
+                    appointment.pet.neutered_status = True
+                    appointment.pet.save()
+            
+            treatment = Treatment.objects.create(**validated_data)
+        return treatment
+    
+
+class UpdateTreatmentSerializer(serializers.Serializer):
+    vet_note = serializers.CharField(required=False, allow_blank=True)
+    treatment = TreatmentSerializer(many=True, required=False)
+    def create(self, validated_data):
+        print(validated_data)
+        vet_note = validated_data.get('vet_note', '')
+        treatments_data = validated_data.get('treatment', [])
+        
+        appointment = Appointment.objects.get(id=self.context.get('appointment_id'))
+        if appointment.status != 'confirmed':
+            raise serializers.ValidationError({'appointment': 'Treatments can only be added to confirmed appointments.'})
+
+        with transaction.atomic():
+            if vet_note:
+                appointment.vet_note = vet_note
+                appointment.status = 'completed'
+                appointment.save()
+
+            created_treatments = []
+            for treatment_data in treatments_data:
+                print(treatment_data)
+                treatment_data['appointment'] = appointment.id
+                if 'service' in treatment_data and isinstance(treatment_data['service'], Service):
+                    treatment_data['service'] = treatment_data['service'].id
+                if 'vaccine' in treatment_data and isinstance(treatment_data['vaccine'], Vaccine):
+                    treatment_data['vaccine'] = treatment_data['vaccine'].id
+                print(treatment_data)
+                treatment_serializer = TreatmentSerializer(data=treatment_data)
+                treatment_serializer.is_valid(raise_exception=True)
+                treatment = treatment_serializer.save()
+                created_treatments.append(treatment)
+            appointment.status = 'completed'
+            appointment.save()
+
+        return {
+            'appointment': appointment,
+            'created_treatments': created_treatments
+        }

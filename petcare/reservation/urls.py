@@ -4,6 +4,7 @@ from . import views
 urlpatterns = [
     # User management
     path('users/', views.UserView.as_view(), name='user_list'),
+    path('users/<str:role>/', views.UserViewByRole.as_view(), name='user_list_by_role'),
     path('users/<int:user_id>/', views.UserDetailView.as_view(), name='user_detail'),
     
     # Pet management
@@ -25,6 +26,17 @@ urlpatterns = [
     path('auth/profile/', views.UserProfileView.as_view(), name='user_profile'),
 
     #Service
-    path('service/', views.ServiceView.as_view(), name='service_create'),
-    path('service/<int:service_id>/', views.UpdateServiceView.as_view(), name='service_manage'),
+    path('services/', views.ServiceView.as_view(), name='service_create'),
+    path('services/<int:service_id>/', views.UpdateServiceView.as_view(), name='service_manage'),
+
+    # Appointment
+    path('appointments/', views.AppointmentView.as_view(), name='appointment'),
+    path('appointments/book/', views.BookAppointmentView.as_view(), name='book_appointment'),
+    path('appointments/<int:appointment_id>/', views.AppointmentDetailView.as_view(), name='view_appointment'),
+    
+    path('appointments/updatestatus/<int:appointment_id>/', views.UpdateStatusAppointmentView.as_view(), name='updatestatus_appointment'),
+    path('appointments/edit/<int:appointment_id>/', views.BookAppointmentView.as_view(), name='edit_appointment'),
+
+    path('appointments/treatment/<int:appointment_id>/', views.UpdateTreatmentView.as_view(), name='treatment_appointment'),
+
 ]

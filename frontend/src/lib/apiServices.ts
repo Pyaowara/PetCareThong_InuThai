@@ -4,6 +4,7 @@ import { apiJson, apiFormData, API_CONFIG } from './api';
 export const userApi = {
     // Get all users (Staff only)
     getUsers: () => apiJson('/users/'),
+    getUsersByRole:(role:string) => apiJson(`/users/${role}/`),
     
     // Get current user profile
     getProfile: () => apiJson('/auth/profile/'),
@@ -113,8 +114,29 @@ export const serviceApi = {
     }),
     getServiceDetail: (serviceId: number) => apiJson(`/services/${serviceId}/`),
     updateService: (serviceId: number, serviceData: any) => apiJson(`/services/${serviceId}/`, {
-        method: 'POST',
+        method: 'PUT',
         body: JSON.stringify(serviceData)
     }),
     deleteService: (serviceId: number) => apiJson(`/services/${serviceId}/`, { method: 'DELETE' }),
+};
+
+export const appointmentApi = {
+    getAppointment: () => apiJson('/appointments/'),
+    bookAppointment: (appointmentData: any) => apiJson('/appointments/book/', {
+        method: 'POST',
+        body: JSON.stringify(appointmentData)
+    }),
+    getAppointmentDetail: (appointmentId: number) => apiJson(`/appointments/${appointmentId}/`),
+    editAppointment: (appointmentId: number, appointmentData: any) => apiJson(`/appointments/edit/${appointmentId}/`, {
+        method: 'PUT',
+        body: JSON.stringify(appointmentData)
+    }),
+    updateStatus: (appointmentId: number, statusData:any) => apiJson(`/appointments/updatestatus/${appointmentId}/`, {
+        method: 'PUT',
+        body: JSON.stringify(statusData)
+    }),
+    updateTreatment: (appointmentId: number, treatmentData:any) => apiJson(`/appointments/treatment/${appointmentId}/`, {
+        method: 'POST',
+        body: JSON.stringify(treatmentData)
+    }),
 };

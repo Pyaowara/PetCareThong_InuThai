@@ -121,6 +121,7 @@ class Service(models.Model):
 class Treatment(models.Model):
     appointment = models.ForeignKey(Appointment, on_delete=models.CASCADE, related_name='treatments')
     service = models.ForeignKey(Service, on_delete=models.CASCADE, related_name='treatments', null=True, blank=True)
+    vaccine = models.ForeignKey(Vaccine, on_delete=models.CASCADE, related_name='treatments', null=True, blank=True, default=None)
     description = models.TextField()
 
     def __str__(self):

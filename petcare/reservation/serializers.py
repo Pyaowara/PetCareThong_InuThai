@@ -152,7 +152,11 @@ class ServiceSerializer(serializers.ModelSerializer):
     class Meta:
         model = Service
         fields = ['id', 'title', 'description']
-
+    def validate_title(self, attrs):
+        print('title', attrs)
+        if Service.objects.filter(title__iexact=attrs):
+            raise serializers.ValidationError(f'{attrs} has already used')
+        return attrs
 class PetSerializer(serializers.ModelSerializer):
     image = serializers.ImageField(required=False, write_only=True)
     image_url = serializers.SerializerMethodField()
@@ -393,17 +397,7 @@ class TreatmentSerializer(serializers.ModelSerializer):
     class Meta:
         model = Treatment
         fields = ['id', 'appointment', 'description', 'service', 'vaccine']
-    def validate(self, data):
-        service = data.get('service')
-        vaccine = data.get('vaccine')
-        if service and service.title.lower() == 'getvaccine':
-            if not vaccine:
-                raise serializers.ValidationError({'vaccine': 'Vaccine is required when service is "getVaccine".'})
-        else:
-            if vaccine:
-                raise serializers.ValidationError({'vaccine': 'Vaccine should only be set when service is "getVaccine".'})
-            data['vaccine'] = None
-        
+
     def create(self, validated_data):
         appointment = validated_data.get('appointment')
         service = validated_data.get('service')
@@ -439,7 +433,6 @@ class TreatmentSerializer(serializers.ModelSerializer):
 class UpdateTreatmentSerializer(serializers.Serializer):
     vet_note = serializers.CharField(required=False, allow_blank=True)
     treatment = TreatmentSerializer(many=True, required=False)
-    
     def create(self, validated_data):
         print(validated_data)
         vet_note = validated_data.get('vet_note', '')

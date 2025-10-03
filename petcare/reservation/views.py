@@ -250,13 +250,15 @@ class UpdateServiceView(APIView):
             return Response({'error': 'service not found'}, status=status.HTTP_404_NOT_FOUND)
     
     # Edit service
-    def post(self, request, service_id):
+    def put(self, request, service_id):
         try:
             user_service = get_user_service(request)
             user_service.check_authentication()
             if not user_service.is_staff():
                 return Response({'error': 'Permission denied'}, status=status.HTTP_403_FORBIDDEN)
             service = Service.objects.get(id=service_id)
+            if service.title in ['getVaccine', 'Neutering/Spaying', 'Others']:
+                return Response({'error': 'Can edit service getVaccine, Neutering/Spaying and Other'}, status=status.HTTP_403_FORBIDDEN)
             serializer = ServiceSerializer(service, data=request.data, partial=True)
             if serializer.is_valid():
                 serializer.save()
@@ -285,6 +287,8 @@ class UpdateServiceView(APIView):
                 return Response({'error': 'Permission denied'}, status=status.HTTP_403_FORBIDDEN)
             
             service = Service.objects.get(id=service_id)
+            if service.title in ['getVaccine', 'Neutering/Spaying', 'Others']:
+                return Response({'error': 'Can delete service getVaccine, Neutering/Spaying and Other'}, status=status.HTTP_403_FORBIDDEN)
             service_title = service.title
             service.delete()
             response_message = f'Service {service_title} deleted successfully'

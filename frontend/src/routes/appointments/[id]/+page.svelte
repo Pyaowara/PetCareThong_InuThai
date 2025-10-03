@@ -71,6 +71,7 @@
     interface Treatment {
         id?: number;
         service: number;
+        appointment: number;
         description: string;
         vaccine: Vaccine | null; // Add this field
     }
@@ -239,6 +240,7 @@
         treatments = [...treatments, { 
             service: 0, 
             description: '',
+            appointment: appointmentId,
             vaccine: null 
         }];
     }
@@ -257,7 +259,8 @@
                     .filter(t => t.service !== 0)
                     .map(t => ({
                         ...t,
-                        vaccine: t.vaccine || null // Only include if selected
+                        vaccine: t.vaccine || null, // Only include if selected
+                        appointment: appointmentId
                     })),
                 appointment : appointment.id
             };
@@ -615,12 +618,12 @@
                                     </select>
                                 </div>
                                 <div class="form-group">
-                                    <label for="description{i}">Description</label>
+                                    <label for="description{i}">Description *</label>
                                     <textarea id="description{i}" 
                                         bind:value={treatment.description} 
-                                        placeholder="Enter treatment description"></textarea>
+                                        placeholder="Enter treatment description" required></textarea>
                                 </div>
-                                {#if treatment.service === 1} <!-- Assuming 3 is the ID for "getVaccine" service -->
+                                {#if treatment.service === 1} 
                                 <div class="form-group">
                                     <label for="vaccine{i}">Vaccine</label>
                                     <select id="vaccine{i}" bind:value={treatment.vaccine}>

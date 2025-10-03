@@ -109,7 +109,7 @@
     }
 
     function canManageServices(): boolean {
-        return $user?.role === 'staff' || $user?.role === 'vet';
+        return $user?.role === 'staff';
     }
 
     // function formatDate(dateString: string): string {
@@ -164,7 +164,7 @@
                         {/if}
                     </div>
                     
-                    {#if canManageServices()}
+                    {#if canManageServices() && !['getVaccine', 'Others', 'Neutering/Spaying'].includes(service.title)}
                         <div class="service-actions">
                             <button class="edit-btn" on:click={() => startEdit(service)}>
                                 Edit
@@ -173,6 +173,7 @@
                                 Delete
                             </button>
                         </div>
+
                     {/if}
                 </div>
             {/each}

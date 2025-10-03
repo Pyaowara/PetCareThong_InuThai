@@ -114,7 +114,7 @@ export const serviceApi = {
     }),
     getServiceDetail: (serviceId: number) => apiJson(`/services/${serviceId}/`),
     updateService: (serviceId: number, serviceData: any) => apiJson(`/services/${serviceId}/`, {
-        method: 'POST',
+        method: 'PUT',
         body: JSON.stringify(serviceData)
     }),
     deleteService: (serviceId: number) => apiJson(`/services/${serviceId}/`, { method: 'DELETE' }),

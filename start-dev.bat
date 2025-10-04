@@ -17,6 +17,7 @@ if not exist "frontend" (
 )
 
 echo Starting Django backend server...
+REM start "Django Backend" cmd /k "cd petcare && ..\myvenv\Scripts\activate.bat && python manage.py runserver --noreload"
 start "Django Backend" cmd /k "cd petcare && ..\myvenv\Scripts\activate.bat && python manage.py runserver"
 
 echo Waiting 3 seconds for Django to start...

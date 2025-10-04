@@ -33,7 +33,7 @@ urlpatterns = [
     path('appointments/', views.AppointmentView.as_view(), name='appointment'),
     path('appointments/book/', views.BookAppointmentView.as_view(), name='book_appointment'),
     path('appointments/<int:appointment_id>/', views.AppointmentDetailView.as_view(), name='view_appointment'),
-    
+
     path('appointments/updatestatus/<int:appointment_id>/', views.UpdateStatusAppointmentView.as_view(), name='updatestatus_appointment'),
     path('appointments/edit/<int:appointment_id>/', views.BookAppointmentView.as_view(), name='edit_appointment'),
 

@@ -46,6 +46,7 @@ INSTALLED_APPS = [
     'django.contrib.staticfiles',
     'rest_framework',
     'corsheaders',
+    'django_apscheduler',
     'reservation',
 ]
 
@@ -144,3 +145,16 @@ MINIO_ACCESS_KEY = env('MINIO_ACCESS_KEY', default='minioadmin')
 MINIO_SECRET_KEY = env('MINIO_SECRET_KEY', default='minioadmin')
 MINIO_BUCKET_NAME = env('MINIO_BUCKET_NAME', default='petcare-images')
 MINIO_SECURE = env.bool('MINIO_SECURE', default=False)
+
+# Email Configuration
+EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
+EMAIL_HOST = 'smtp.gmail.com'
+EMAIL_PORT = 587
+EMAIL_USE_TLS = True
+EMAIL_HOST_USER = env('EMAIL_HOST_USER')
+EMAIL_HOST_PASSWORD = env('EMAIL_HOST_PASSWORD')
+DEFAULT_FROM_EMAIL = env('DEFAULT_FROM_EMAIL')
+
+# Django APScheduler Configuration
+SCHEDULER_DEFAULT = True
+SCHEDULER_AUTOSTART = True

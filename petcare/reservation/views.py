@@ -628,6 +628,12 @@ class BookAppointmentView(APIView):
             if serializer.is_valid():
                 print(serializer.validated_data)
                 app = serializer.save()
+
+                try:
+                    email_service.send_appointment_notification(app)
+                except Exception as e:
+                    print(f"Failed to send email notifications: {str(e)}")
+                
                 return Response(BookAppointmentSerializer(app).data, status=status.HTTP_201_CREATED)
             return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
         except PermissionError as e:
@@ -747,10 +753,15 @@ class UpdateStatusAppointmentView(APIView):
                     if serializer.validated_data.get('assigned_vet'):
                         return Response({'error': 'Permission denied'}, status=status.HTTP_403_FORBIDDEN)
                     # client can update status only 'cancelled' or 'booked'
-                    status = serializer.validated_data.get('status')
-                    if status not in ['cancelled', 'booked']:
+                    appointment_status = serializer.validated_data.get('status')
+                    if appointment_status not in ['cancelled', 'booked']:
                         return Response({'error': 'client can\'t update status'}, status=status.HTTP_403_FORBIDDEN)
+                    
+                    old_status = appointment.status
                     app = serializer.save()
+
+                    email_service.send_appointment_status_update(app, old_status)
+                    
                     return Response(UpdateStatusSerializer(app).data)
                 return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
             elif user_service.is_staff():
@@ -759,7 +770,12 @@ class UpdateStatusAppointmentView(APIView):
                 if serializer.is_valid():
                     if (not serializer.validated_data.get('assigned_vet')) and serializer.validated_data.get('status') == 'confirmed':
                         return Response({'error': 'Not found assigned vet & can\'t confirm'}, status=status.HTTP_403_FORBIDDEN)
+                    
+                    old_status = appointment.status
                     app = serializer.save()
+
+                    email_service.send_appointment_status_update(app, old_status)
+                    
                     return Response(UpdateStatusSerializer(app).data)
                 return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
             elif user_service.is_vet():
@@ -770,7 +786,12 @@ class UpdateStatusAppointmentView(APIView):
                     status_val = serializer.validated_data.get('status')
                     if status_val not in ['completed', 'rejected'] or appointment.status != 'confirmed' or serializer.validated_data.get('date'):
                         return Response({'error': 'Permission denied'}, status=status.HTTP_403_FORBIDDEN)
+                    
+                    old_status = appointment.status
                     app = serializer.save()
+
+                    email_service.send_appointment_status_update(app, old_status)
+                    
                     return Response(UpdateStatusSerializer(app).data)
                 return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
             else:

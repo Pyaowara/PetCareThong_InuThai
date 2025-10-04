@@ -9,6 +9,7 @@ class UserSerializer(serializers.ModelSerializer):
     password = serializers.CharField(write_only=True)
     image = serializers.ImageField(required=False, write_only=True)
     image_url = serializers.SerializerMethodField()
+    active = serializers.BooleanField(default=True, required=False)
 
     class Meta:
         model = User

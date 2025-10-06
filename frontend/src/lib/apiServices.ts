@@ -142,5 +142,5 @@ export const appointmentApi = {
 
 };
 export const treatmentApi = {
-    getTreatmentHistory: (userId: number) => apiJson(`/treatments/id${userId}/`),
+    getTreatmentHistory: (userId: number) => apiJson(`/treatments/${userId}/`),
 };

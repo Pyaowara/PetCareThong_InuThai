@@ -87,8 +87,7 @@
                 appointment.purpose
                     .toLowerCase()
                     .includes(searchQuery.toLowerCase()));
-        console.log(formatDate(appointment.date))
-        console.log(dateFilter)
+        
         const matchesDate = !dateFilter || formatDate(appointment.date) === dateFilter;
         const matchesPet =
             !petFilter || appointment.pet_name === petFilter;

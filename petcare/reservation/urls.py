@@ -40,5 +40,5 @@ urlpatterns = [
     path('appointments/treatment/<int:appointment_id>/', views.UpdateTreatmentView.as_view(), name='treatment_appointment'),
 
     # Treatment history
-    path('treatments/<int:user_id>/', views.TreatmentView.as_view(), name='treatment_list')
+    path('treatments/<int:user_id>/', views.UserHistoryView.as_view(), name='treatment_list')
 ]

@@ -311,7 +311,6 @@ class BookAppointmentSerializer(serializers.ModelSerializer):
 
         appointment_time = timezone.localtime(value)
         now = timezone.localtime(timezone.now()) 
-        print(timezone.now(), timezone.now())
         if appointment_time < now:
             raise serializers.ValidationError("Appointment date cannot be in the past.")
         if appointment_time - now < timedelta(days=3):
@@ -408,6 +407,28 @@ class UpdateStatusSerializer(serializers.ModelSerializer):
     class Meta:
         model = Appointment
         fields = ['id', 'status', 'assigned_vet']
+
+    def validate(self, data):
+        user_service = self.context.get('user_service')
+        appointment = self.instance
+
+        if user_service.is_client():
+            if appointment.user != user_service.get_user():
+                raise serializers.ValidationError('Permission denied.')
+
+            if data.get('assigned_vet'):
+                raise serializers.ValidationError('Clients cannot assign a vet.')
+
+            if data.get('status') not in ['cancelled', 'booked']:
+                raise serializers.ValidationError('Clients can only update status to "cancelled" or "booked".')
+
+        elif user_service.is_staff():
+            if data.get('status') == 'confirmed' and not data.get('assigned_vet'):
+                raise serializers.ValidationError('Cannot confirm without assigning a vet.')
+        else:
+            raise serializers.ValidationError('Permission denied.')
+
+        return data
     
 
 class TreatmentSerializer(serializers.ModelSerializer):
@@ -454,7 +475,7 @@ class UpdateTreatmentSerializer(serializers.Serializer):
     vet_note = serializers.CharField(required=False, allow_blank=True)
     treatment = TreatmentSerializer(many=True, required=False)
     def create(self, validated_data):
-        print(validated_data)
+        
         vet_note = validated_data.get('vet_note', '')
         treatments_data = validated_data.get('treatment', [])
         
@@ -470,13 +491,11 @@ class UpdateTreatmentSerializer(serializers.Serializer):
 
             created_treatments = []
             for treatment_data in treatments_data:
-                print(treatment_data)
                 treatment_data['appointment'] = appointment.id
                 if 'service' in treatment_data and isinstance(treatment_data['service'], Service):
                     treatment_data['service'] = treatment_data['service'].id
                 if 'vaccine' in treatment_data and isinstance(treatment_data['vaccine'], Vaccine):
                     treatment_data['vaccine'] = treatment_data['vaccine'].id
-                print(treatment_data)
                 treatment_serializer = TreatmentSerializer(data=treatment_data)
                 treatment_serializer.is_valid(raise_exception=True)
                 treatment = treatment_serializer.save()
@@ -488,3 +507,12 @@ class UpdateTreatmentSerializer(serializers.Serializer):
             'appointment': appointment,
             'created_treatments': created_treatments
         }
+class UserHistorySerializer(serializers.ModelSerializer):
+    appointment = serializers.CharField(source='appointment.purpose', read_only=True)
+    service = serializers.CharField(source='service.title', read_only=True)
+    pet = serializers.CharField(source='appointment.pet.name', read_only=True)
+    vaccine = serializers.CharField(source='vaccine.name', read_only=True)
+
+    class Meta:
+        model = Treatment
+        fields = ['id', 'appointment', 'service', 'description', 'vaccine', 'pet']

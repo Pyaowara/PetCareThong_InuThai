@@ -823,6 +823,15 @@
         cursor: pointer;
         font-size: 0.85rem;
     }
+    .view-history-btn {
+        background: #193ee5;
+        color: white;
+        border: none;
+        padding: 0.4rem 0.8rem;
+        border-radius: 4px;
+        cursor: pointer;
+        font-size: 0.85rem;
+    }
 
     .toggle-btn {
         border: none;

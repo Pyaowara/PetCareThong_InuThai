@@ -253,22 +253,33 @@
     // }
 
     function formatDate(dateString: string): string {
-        const d = new Date(dateString);
-
-        const day = d.getDate();
-        const month = (d.getMonth() + 1).toString().padStart(2, "0");;
-        const year = d.getFullYear().toString().padStart(2, "0");;
-
-        return `${year}-${month}-${day}`;
-        
+        const date = new Date(dateString).toLocaleString("en-US", { timeZone: "Asia/Bangkok" });
+        const dateObj = new Date(date);
+        const dd = String(dateObj.getDate()).padStart(2, "0");
+        const mm = String(dateObj.getMonth() + 1).padStart(2, "0");
+        const yyyy = dateObj.getFullYear();
+        return `${yyyy}-${mm}-${dd}`;
     }
     function formatDatetime(dateString: string): string {
-        
-        return new Date(dateString).toISOString().replace("T", " ").split("Z")[0].slice(0, -7);
+        const date = new Date(dateString).toLocaleString("en-US", { timeZone: "Asia/Bangkok" });
+        const dateObj = new Date(date);
+        const dd = String(dateObj.getDate()).padStart(2, "0");
+        const mm = String(dateObj.getMonth() + 1).padStart(2, "0");
+        const yyyy = dateObj.getFullYear();
+        const hh = String(dateObj.getHours()).padStart(2, "0");
+        const min = String(dateObj.getMinutes()).padStart(2, "0");
 
+    return `${dd}-${mm}-${yyyy} ${hh}:${min}`;
     }
     function getTodayDate(): string {
-        return new Date().toISOString().split("T")[0];
+        const today = new Date();
+        const dateInBangkok = new Date(today.toLocaleString("en-US", { timeZone: "Asia/Bangkok" }));
+        const dd = String(dateInBangkok.getDate()).padStart(2, "0");
+        const mm = String(dateInBangkok.getMonth() + 1).padStart(2, "0");
+        const yyyy = dateInBangkok.getFullYear();
+        const hh = String(dateInBangkok.getHours()).padStart(2, "0");
+        const min = String(dateInBangkok.getMinutes()).padStart(2, "0");
+        return `${yyyy}-${mm}-${dd}`;
     }
 
     // Set default date to today when modal opens

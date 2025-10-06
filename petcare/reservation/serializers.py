@@ -153,11 +153,16 @@ class ServiceSerializer(serializers.ModelSerializer):
     class Meta:
         model = Service
         fields = ['id', 'title', 'description']
-    def validate_title(self, attrs):
-        print('title', attrs)
-        if Service.objects.filter(title__iexact=attrs):
-            raise serializers.ValidationError(f'{attrs} has already used')
-        return attrs
+    def validate_title(self, value):
+        if Service.objects.filter(title__iexact=value):
+            raise serializers.ValidationError(f'{value} has already used')
+        elif value.lower in ['getvaccine', 'neutering/spaying', 'other']:
+            raise serializers.ValidationError(f'{value} is a main service')
+        return value
+    # def create(self, validated_data):
+    #     request = self.context.get('request', None)
+    #     user_service = get_user_service(request)
+
 class PetSerializer(serializers.ModelSerializer):
     image = serializers.ImageField(required=False, write_only=True)
     image_url = serializers.SerializerMethodField()
@@ -289,7 +294,6 @@ class BookAppointmentSerializer(serializers.ModelSerializer):
     class Meta:
         model = Appointment
         fields = ['id', 'user', 'pet', 'purpose', 'remarks', 'date', 'assigned_vet']
-
     def validate_user(self, value):
         request = self.context.get('request', None)
         user_service = getattr(request, 'user_service', None) if request else None
@@ -301,7 +305,19 @@ class BookAppointmentSerializer(serializers.ModelSerializer):
                     if value.role != 'client':
                         raise serializers.ValidationError('Selected user is not a client.')
         return value
+    def validate_date(self, value):
+        from datetime import timedelta
+        from django.utils import timezone
 
+        appointment_time = timezone.localtime(value)
+        now = timezone.localtime(timezone.now()) 
+        print(timezone.now(), timezone.now())
+        if appointment_time < now:
+            raise serializers.ValidationError("Appointment date cannot be in the past.")
+        if appointment_time - now < timedelta(days=3):
+            raise serializers.ValidationError("You must booked appointment before appointment date for 3 day.")
+       
+        return value
     def validate_assigned_vet(self, value):
         request = self.context.get('request', None)
         user_service = getattr(request, 'user_service', None) if request else None
@@ -354,6 +370,8 @@ class BookAppointmentSerializer(serializers.ModelSerializer):
         request = self.context.get('request', None)
         user_service = getattr(request, 'user_service', None) if request else None
         if user_service and user_service.is_client():
+            if instance.status != 'booked':
+                raise serializers.ValidationError({'status': 'Client can\'t edit appoitment when status is not booked'})
             if not validated_data.get('user'):
                 validated_data['user'] = user_service.get_user()
             validated_data['assigned_vet'] = None
@@ -390,6 +408,7 @@ class UpdateStatusSerializer(serializers.ModelSerializer):
     class Meta:
         model = Appointment
         fields = ['id', 'status', 'assigned_vet']
+    
 
 class TreatmentSerializer(serializers.ModelSerializer):
     vaccine = serializers.PrimaryKeyRelatedField(queryset=Vaccine.objects.all(), required=False, allow_null=True)

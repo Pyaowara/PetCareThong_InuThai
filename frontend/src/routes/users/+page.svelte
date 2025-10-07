@@ -244,6 +244,10 @@
         if (!dateString) return 'Never';
         return new Date(dateString).toLocaleString();
     }
+
+    function viewHistory(userId: number) {
+        goto(`/history/${userId}`);
+    }
 </script>
 
 <svelte:head>
@@ -367,6 +371,11 @@
                                                 on:click={() => toggleUserStatus(u)}
                                             >
                                                 {u.active ? 'Deactivate' : 'Activate'}
+                                            </button>
+                                        {/if}
+                                        {#if u.role === 'client'}
+                                            <button class="view-history-btn" on:click={() => viewHistory(u.id)}>
+                                                View History
                                             </button>
                                         {/if}
                                     </div>
@@ -807,6 +816,15 @@
 
     .edit-btn {
         background: #daa520;
+        color: white;
+        border: none;
+        padding: 0.4rem 0.8rem;
+        border-radius: 4px;
+        cursor: pointer;
+        font-size: 0.85rem;
+    }
+    .view-history-btn {
+        background: #193ee5;
         color: white;
         border: none;
         padding: 0.4rem 0.8rem;

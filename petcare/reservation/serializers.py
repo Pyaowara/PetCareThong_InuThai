@@ -153,11 +153,14 @@ class ServiceSerializer(serializers.ModelSerializer):
     class Meta:
         model = Service
         fields = ['id', 'title', 'description']
-    def validate_title(self, attrs):
-        print('title', attrs)
-        if Service.objects.filter(title__iexact=attrs):
-            raise serializers.ValidationError(f'{attrs} has already used')
-        return attrs
+    def validate_title(self, value):
+        if Service.objects.filter(title__iexact=value):
+            raise serializers.ValidationError(f'{value} has already used')
+        elif value.lower in ['getvaccine', 'neutering/spaying', 'other']:
+            raise serializers.ValidationError(f'{value} is a main service')
+        return value
+
+
 class PetSerializer(serializers.ModelSerializer):
     image = serializers.ImageField(required=False, write_only=True)
     image_url = serializers.SerializerMethodField()
@@ -289,7 +292,6 @@ class BookAppointmentSerializer(serializers.ModelSerializer):
     class Meta:
         model = Appointment
         fields = ['id', 'user', 'pet', 'purpose', 'remarks', 'date', 'assigned_vet']
-
     def validate_user(self, value):
         request = self.context.get('request', None)
         user_service = getattr(request, 'user_service', None) if request else None
@@ -301,7 +303,18 @@ class BookAppointmentSerializer(serializers.ModelSerializer):
                     if value.role != 'client':
                         raise serializers.ValidationError('Selected user is not a client.')
         return value
+    def validate_date(self, value):
+        from datetime import timedelta
+        from django.utils import timezone
 
+        appointment_time = timezone.localtime(value)
+        now = timezone.localtime(timezone.now()) 
+        if appointment_time < now:
+            raise serializers.ValidationError("Appointment date cannot be in the past.")
+        if appointment_time - now < timedelta(days=3):
+            raise serializers.ValidationError("You must booked appointment before appointment date for 3 day.")
+       
+        return value
     def validate_assigned_vet(self, value):
         request = self.context.get('request', None)
         user_service = getattr(request, 'user_service', None) if request else None
@@ -354,6 +367,8 @@ class BookAppointmentSerializer(serializers.ModelSerializer):
         request = self.context.get('request', None)
         user_service = getattr(request, 'user_service', None) if request else None
         if user_service and user_service.is_client():
+            if instance.status != 'booked':
+                raise serializers.ValidationError({'status': 'Client can\'t edit appoitment when status is not booked'})
             if not validated_data.get('user'):
                 validated_data['user'] = user_service.get_user()
             validated_data['assigned_vet'] = None
@@ -390,6 +405,29 @@ class UpdateStatusSerializer(serializers.ModelSerializer):
     class Meta:
         model = Appointment
         fields = ['id', 'status', 'assigned_vet']
+
+    def validate(self, data):
+        user_service = self.context.get('user_service')
+        appointment = self.instance
+
+        if user_service.is_client():
+            if appointment.user != user_service.get_user():
+                raise serializers.ValidationError('Permission denied.')
+
+            if data.get('assigned_vet'):
+                raise serializers.ValidationError('Clients cannot assign a vet.')
+
+            if data.get('status') not in ['cancelled', 'booked']:
+                raise serializers.ValidationError('Clients can only update status to "cancelled" or "booked".')
+
+        elif user_service.is_staff():
+            if data.get('status') == 'confirmed' and not data.get('assigned_vet'):
+                raise serializers.ValidationError('Cannot confirm without assigning a vet.')
+        else:
+            raise serializers.ValidationError('Permission denied.')
+
+        return data
+    
 
 class TreatmentSerializer(serializers.ModelSerializer):
     vaccine = serializers.PrimaryKeyRelatedField(queryset=Vaccine.objects.all(), required=False, allow_null=True)
@@ -435,7 +473,7 @@ class UpdateTreatmentSerializer(serializers.Serializer):
     vet_note = serializers.CharField(required=False, allow_blank=True)
     treatment = TreatmentSerializer(many=True, required=False)
     def create(self, validated_data):
-        print(validated_data)
+        
         vet_note = validated_data.get('vet_note', '')
         treatments_data = validated_data.get('treatment', [])
         
@@ -451,13 +489,11 @@ class UpdateTreatmentSerializer(serializers.Serializer):
 
             created_treatments = []
             for treatment_data in treatments_data:
-                print(treatment_data)
                 treatment_data['appointment'] = appointment.id
                 if 'service' in treatment_data and isinstance(treatment_data['service'], Service):
                     treatment_data['service'] = treatment_data['service'].id
                 if 'vaccine' in treatment_data and isinstance(treatment_data['vaccine'], Vaccine):
                     treatment_data['vaccine'] = treatment_data['vaccine'].id
-                print(treatment_data)
                 treatment_serializer = TreatmentSerializer(data=treatment_data)
                 treatment_serializer.is_valid(raise_exception=True)
                 treatment = treatment_serializer.save()
@@ -469,3 +505,12 @@ class UpdateTreatmentSerializer(serializers.Serializer):
             'appointment': appointment,
             'created_treatments': created_treatments
         }
+class UserHistorySerializer(serializers.ModelSerializer):
+    appointment = serializers.CharField(source='appointment.purpose', read_only=True)
+    service = serializers.CharField(source='service.title', read_only=True)
+    pet = serializers.CharField(source='appointment.pet.name', read_only=True)
+    vaccine = serializers.CharField(source='vaccine.name', read_only=True)
+
+    class Meta:
+        model = Treatment
+        fields = ['id', 'appointment', 'service', 'description', 'vaccine', 'pet']

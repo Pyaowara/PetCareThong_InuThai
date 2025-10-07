@@ -139,4 +139,8 @@ export const appointmentApi = {
         method: 'POST',
         body: JSON.stringify(treatmentData)
     }),
+
+};
+export const treatmentApi = {
+    getTreatmentHistory: (userId: number) => apiJson(`/treatments/${userId}/`),
 };

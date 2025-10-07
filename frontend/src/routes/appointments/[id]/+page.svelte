@@ -4,7 +4,7 @@
     import { page } from '$app/stores';
     import { isAuthenticated, user } from '$lib/auth';
     import { appointmentApi, petApi, userApi, vaccineApi, serviceApi } from '$lib/apiServices';
-
+    const options = { timeZone: "Asia/Bangkok" };
     interface Appointment {
         id: number;
         user: User;
@@ -276,19 +276,26 @@
 
     function canEdit(): boolean {
         if (!$user || !appointment) return false;
-        return $user.role === 'staff' || (appointment.user.id === $user.id);
+        return $user.role === 'staff' || (appointment.user.id === $user.id && appointment.status == 'booked');
     }
     function formatDatetime(dateString: string): string {
-        
-        return new Date(dateString).toISOString().replace("T", " ").split("Z")[0].slice(0, -7);
+        const date = new Date(dateString).toLocaleString("en-US", { timeZone: "Asia/Bangkok" });
+        const dateObj = new Date(date);
+        const dd = String(dateObj.getDate()).padStart(2, "0");
+        const mm = String(dateObj.getMonth() + 1).padStart(2, "0");
+        const yyyy = dateObj.getFullYear();
+        const hh = String(dateObj.getHours()).padStart(2, "0");
+        const min = String(dateObj.getMinutes()).padStart(2, "0");
 
+    return `${dd}-${mm}-${yyyy} ${hh}:${min}`;
     }
-    function canAddVaccination(): boolean {
-        return $user?.role === 'staff' || $user?.role === 'vet';
-    }
-
     function formatDate(dateString: string): string {
-        return new Date(dateString).toLocaleDateString();
+        const date = new Date(dateString).toLocaleString("en-US", { timeZone: "Asia/Bangkok" });
+        const dateObj = new Date(date);
+        const dd = String(dateObj.getDate()).padStart(2, "0");
+        const mm = String(dateObj.getMonth() + 1).padStart(2, "0");
+        const yyyy = dateObj.getFullYear();
+        return `${yyyy}-${mm}-${dd}`;
     }
 </script>
 

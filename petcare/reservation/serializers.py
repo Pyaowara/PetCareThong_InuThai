@@ -159,9 +159,7 @@ class ServiceSerializer(serializers.ModelSerializer):
         elif value.lower in ['getvaccine', 'neutering/spaying', 'other']:
             raise serializers.ValidationError(f'{value} is a main service')
         return value
-    # def create(self, validated_data):
-    #     request = self.context.get('request', None)
-    #     user_service = get_user_service(request)
+
 
 class PetSerializer(serializers.ModelSerializer):
     image = serializers.ImageField(required=False, write_only=True)

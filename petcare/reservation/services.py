@@ -43,7 +43,7 @@ class MinIOService:
         except S3Error as e:
             print(f"Error uploading file: {e}")
             return False
-    
+
     def get_image_url(self, file_name, expires_days=7):
         try:
             expires = timedelta(days=expires_days)
@@ -131,8 +131,6 @@ class EmailService:
     @staticmethod
     def send_appointment_status_update(appointment, old_status=None):
         try:
-            from .models import User
-            
             context = {
                 'appointment': appointment,
                 'pet': appointment.pet,
@@ -148,6 +146,7 @@ class EmailService:
 
             elif appointment.status == 'cancelled' and old_status != 'cancelled':
                 EmailService._send_user_cancellation_email(appointment.user, context)
+                from .models import User
                 staff_users = User.objects.filter(role='staff', active=True)
                 for staff in staff_users:
                     EmailService._send_staff_cancellation_email(staff, context)
@@ -160,7 +159,6 @@ class EmailService:
     
     @staticmethod
     def _send_vet_assignment_email(vet, context):
-        """Send email to assigned vet when appointment is confirmed"""
         try:
             subject = f"Appointment Assigned - {context['pet'].name} ({context['user'].full_name})"
             
@@ -243,7 +241,6 @@ class EmailService:
     
     @staticmethod
     def _send_user_confirmation_email(user, context):
-        """Send confirmation email to user when appointment is confirmed"""
         try:
             subject = f"Appointment Confirmed - {context['pet'].name}"
             
@@ -330,7 +327,6 @@ class EmailService:
     
     @staticmethod
     def _send_user_cancellation_email(user, context):
-        """Send cancellation confirmation email to user"""
         try:
             subject = f"Appointment Cancelled - {context['pet'].name}"
             
@@ -407,7 +403,6 @@ class EmailService:
     
     @staticmethod
     def _send_staff_cancellation_email(staff, context):
-        """Send cancellation notification email to staff"""
         try:
             subject = f"Appointment Cancelled - {context['pet'].name} ({context['user'].full_name})"
             
@@ -488,7 +483,6 @@ class EmailService:
     
     @staticmethod
     def _send_user_rejection_email(user, context):
-        """Send rejection notification email to user"""
         try:
             subject = f"Appointment Request Declined - {context['pet'].name}"
             
@@ -729,7 +723,6 @@ class EmailService:
 
     @staticmethod
     def send_appointment_reminder(appointment):
-        """Send reminder email to client 2 days before confirmed appointment"""
         try:
             subject = f"Appointment Reminder - {appointment.pet.name} Tomorrow!"
             

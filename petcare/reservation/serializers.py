@@ -5,6 +5,7 @@ from .services import minio_service, get_user_service
 import uuid
 import os
 
+"""Pattrapol Yaowaraj 66070148"""
 class UserSerializer(serializers.ModelSerializer):
     password = serializers.CharField(write_only=True)
     image = serializers.ImageField(required=False, write_only=True)
@@ -148,18 +149,6 @@ class UserUpdateSerializer(serializers.ModelSerializer):
         
         instance.save()
         return instance
-    
-class ServiceSerializer(serializers.ModelSerializer):
-    class Meta:
-        model = Service
-        fields = ['id', 'title', 'description']
-    def validate_title(self, value):
-        if Service.objects.filter(title__iexact=value):
-            raise serializers.ValidationError(f'{value} has already used')
-        elif value.lower in ['getvaccine', 'neutering/spaying', 'other']:
-            raise serializers.ValidationError(f'{value} is a main service')
-        return value
-
 
 class PetSerializer(serializers.ModelSerializer):
     image = serializers.ImageField(required=False, write_only=True)
@@ -286,6 +275,21 @@ class VaccinatedListSerializer(serializers.ModelSerializer):
         model = Vaccinated
         fields = ['id', 'date', 'remarks', 'pet_name', 'pet_breed', 'vaccine_name', 'owner_name']
 
+"""End Of Pattrapol Yaowaraj 66070148"""
+
+"""Teetat Thongkumtae 66070092"""
+
+class ServiceSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Service
+        fields = ['id', 'title', 'description']
+    def validate_title(self, value):
+        if Service.objects.filter(title__iexact=value):
+            raise serializers.ValidationError(f'{value} has already used')
+        elif value.lower in ['getvaccine', 'neutering/spaying', 'other']:
+            raise serializers.ValidationError(f'{value} is a main service')
+        return value
+
 class BookAppointmentSerializer(serializers.ModelSerializer):
     user = serializers.PrimaryKeyRelatedField(queryset=User.objects.filter(role='client'), required=False)
     assigned_vet = serializers.PrimaryKeyRelatedField(queryset=User.objects.filter(role='vet'), required=False, allow_null=True)
@@ -379,7 +383,7 @@ class BookAppointmentSerializer(serializers.ModelSerializer):
             validated_data['status'] = status
             if status == 'confirmed' and not validated_data.get('assigned_vet'):
                 raise serializers.ValidationError({'assigned_vet': 'Staff must assign a veterinarian (assigned_vet) when status is confirmed.'})
-            
+
 
         for attr, value in validated_data.items():
             setattr(instance, attr, value)

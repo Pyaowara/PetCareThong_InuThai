@@ -9,6 +9,7 @@ from .serializers import *
 from .services import *
 
 """Pattrapol Yaowaraj 66070148"""
+
 class UserView(APIView):
     parser_classes = [MultiPartParser, JSONParser]
     
@@ -21,30 +22,11 @@ class UserView(APIView):
             if not user_service.is_staff():
                 return Response({'error': 'Staff access required'}, status=status.HTTP_403_FORBIDDEN)
 
-            users = User.objects.all()
+            users = User.objects.all().order_by('-active', 'role')
             if role and (role == "client"):
                 users = users.filter(role='client')
             serializer = UserSerializer(users, many=True)
             return Response(serializer.data)
-        except PermissionError as e:
-            return Response({'error': str(e)}, status=status.HTTP_401_UNAUTHORIZED)
-
-class UserViewByRole(APIView):
-    def get(self, request, role):
-        try:
-            user_service = get_user_service(request)
-            user_service.check_authentication()
-
-            
-            if not user_service.is_staff():
-                return Response({'error': 'Staff access required'}, status=status.HTTP_403_FORBIDDEN)
-
-            users = User.objects.all()
-            if role in ['client', 'staff', 'vet']:
-                users = users.filter(role=role)
-                serializer = UserSerializer(users, many=True)
-                return Response(serializer.data)
-            return Response({'error': f'Role {role} not found'}, status=status.HTTP_403_FORBIDDEN)
         except PermissionError as e:
             return Response({'error': str(e)}, status=status.HTTP_401_UNAUTHORIZED)
 
@@ -79,11 +61,12 @@ class UserDetailView(APIView):
     def put(self, request, user_id):
         try:
             user_service = get_user_service(request)
+            print(user_service)
             user_service.check_authentication()
             
             user = User.objects.get(id=user_id)
             serializer = UserUpdateSerializer(user, data=request.data, partial=True, context={'request': request})
-            
+
             if serializer.is_valid():
                 updated_user = serializer.save()
                 return Response({
@@ -427,6 +410,7 @@ class VaccinatedView(APIView):
             pet_id = request.GET.get('pet_id')
             vaccine_id = request.GET.get('vaccine_id')
             owner_id = request.GET.get('owner_id')
+            date = request.GET.get('date')
 
             queryset = Vaccinated.objects.select_related('pet', 'vaccine', 'pet__user').order_by('-date')
 
@@ -436,6 +420,8 @@ class VaccinatedView(APIView):
                 queryset = queryset.filter(vaccine_id=vaccine_id)
             if owner_id:
                 queryset = queryset.filter(pet__user_id=owner_id)
+            if date:
+                queryset = queryset.filter(date=date)
 
             if not user_service.is_staff() and not user_service.is_vet():
                 queryset = queryset.filter(pet__user_id=user_service.user_id)
@@ -509,6 +495,25 @@ class VaccinatedDetailView(APIView):
 """End of Pattrapol Yaowaraj 66070148"""
 
 """Teetat Thongkumtae 66070092"""
+
+class UserViewByRole(APIView):
+    def get(self, request, role):
+        try:
+            user_service = get_user_service(request)
+            user_service.check_authentication()
+
+            
+            if not user_service.is_staff():
+                return Response({'error': 'Staff access required'}, status=status.HTTP_403_FORBIDDEN)
+
+            users = User.objects.all()
+            if role in ['client', 'staff', 'vet']:
+                users = users.filter(role=role)
+                serializer = UserSerializer(users, many=True)
+                return Response(serializer.data)
+            return Response({'error': f'Role {role} not found'}, status=status.HTTP_403_FORBIDDEN)
+        except PermissionError as e:
+            return Response({'error': str(e)}, status=status.HTTP_401_UNAUTHORIZED)
 
 class ServiceView(APIView):
     parser_classes = [MultiPartParser, JSONParser]
@@ -631,10 +636,8 @@ class BookAppointmentView(APIView):
             if serializer.is_valid():
                 app = serializer.save()
 
-                try:
-                    email_service.send_appointment_notification(app)
-                except Exception as e:
-                    print(f"Failed to send email notifications: {str(e)}")
+                email_service = EmailService()
+                send_email_async(email_service.send_appointment_notification, app)
                 
                 return Response(BookAppointmentSerializer(app).data, status=status.HTTP_201_CREATED)
             return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
@@ -745,7 +748,10 @@ class UpdateStatusAppointmentView(APIView):
 
             if serializer.is_valid():
                 app = serializer.save()
-                email_service.send_appointment_status_update(app, appointment.status)
+                
+                email_service = EmailService()
+                send_email_async(email_service.send_appointment_status_update, app, appointment.status)
+                
                 return Response(UpdateStatusSerializer(app).data)
 
             return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)

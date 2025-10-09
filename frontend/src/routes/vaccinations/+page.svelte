@@ -2,7 +2,7 @@
     import { onMount } from "svelte";
     import { goto } from "$app/navigation";
     import { isAuthenticated, user, authService } from "$lib/auth";
-    import { vaccinationApi, vaccineApi, petApi } from "$lib/apiServices";
+    import { vaccinationApi, vaccineApi, petApi, userApi } from "$lib/apiServices";
 
     interface Vaccination {
         id: number;
@@ -32,15 +32,24 @@
         description?: string;
     }
 
+    interface User {
+        id: number;
+        email: string;
+        full_name: string;
+        role: string;
+    }
+
     let vaccinations: Vaccination[] = [];
     let pets: Pet[] = [];
+    let allPets: Pet[] = []; // Store all pets for filtering
     let vaccines: Vaccine[] = [];
+    let users: User[] = [];
     let isLoading = true;
     let error = "";
-    let searchQuery = "";
     let dateFilter = "";
     let petFilter = "";
     let vaccineFilter = "";
+    let userFilter = "";
     let showCreateModal = false;
 
     // Form data
@@ -51,33 +60,41 @@
         remarks: "",
     };
 
-    $: filteredVaccinations = vaccinations.filter((vaccination) => {
-        const matchesSearch =
-            !searchQuery ||
-            vaccination.pet_name
-                .toLowerCase()
-                .includes(searchQuery.toLowerCase()) ||
-            vaccination.vaccine_name
-                .toLowerCase()
-                .includes(searchQuery.toLowerCase()) ||
-            vaccination.owner_name
-                .toLowerCase()
-                .includes(searchQuery.toLowerCase()) ||
-            (vaccination.remarks &&
-                vaccination.remarks
-                    .toLowerCase()
-                    .includes(searchQuery.toLowerCase()));
+    // Reactive statement to filter pets based on selected user
+    $: {
+        if (userFilter && allPets.length > 0) {
+            const selectedUser = users.find(u => u.full_name === userFilter);
+            if (selectedUser) {
+                pets = allPets.filter(pet => pet.owner_name === selectedUser.full_name);
+                // Reset pet filter when user changes
+                petFilter = "";
+            }
+        } else {
+            pets = allPets;
+        }
+    }
 
-        const matchesDate = !dateFilter || vaccination.date === dateFilter;
-        const matchesPet =
-            !petFilter || vaccination.pet_name === petFilter;
-        const matchesVaccine =
-            !vaccineFilter || vaccination.vaccine_name === vaccineFilter;
+    // Reactive statement to reload data when filters change
+    $: {
+        if (allPets.length > 0 && vaccines.length > 0) {
+            loadVaccinations();
+        }
+    }
 
-        return matchesSearch && matchesDate && matchesPet && matchesVaccine;
-    });
+    // Watch for changes in filter values and automatically reload data
+    $: dateFilter, petFilter, vaccineFilter, userFilter, handleFilterChange();
 
-    $: availablePets = pets;
+    function handleFilterChange() {
+        // Debounce the filtering to avoid too many API calls
+        if (allPets.length > 0 && vaccines.length > 0) {
+            clearTimeout(filterTimeout);
+            filterTimeout = setTimeout(() => {
+                loadVaccinations();
+            }, 300);
+        }
+    }
+
+    let filterTimeout: ReturnType<typeof setTimeout>;
 
     onMount(async () => {
         if (!$isAuthenticated) {
@@ -85,13 +102,54 @@
             return;
         }
 
-        await Promise.all([loadVaccinations(), loadPets(), loadVaccines()]);
+        const loadTasks = [loadPets(), loadVaccines()];
+        
+        // Only load users if user is staff or vet
+        if ($user?.role === "staff" || $user?.role === "vet") {
+            loadTasks.push(loadUsers());
+        }
+
+        await Promise.all(loadTasks);
+        await loadVaccinations();
     });
 
     async function loadVaccinations() {
         try {
             isLoading = true;
-            vaccinations = await vaccinationApi.getVaccinations();
+            
+            // Build filters object
+            const filters: any = {};
+            
+            // Convert user name filter to user ID (for owner_id filter)
+            if (userFilter) {
+                const selectedUser = users.find(user => user.full_name === userFilter);
+                if (selectedUser) {
+                    filters.owner_id = selectedUser.id;
+                }
+            }
+            
+            // Convert pet name filter to pet ID
+            if (petFilter) {
+                const selectedPet = pets.find(pet => pet.name === petFilter);
+                if (selectedPet) {
+                    filters.pet_id = selectedPet.id;
+                }
+            }
+            
+            // Convert vaccine name filter to vaccine ID
+            if (vaccineFilter) {
+                const selectedVaccine = vaccines.find(vaccine => vaccine.name === vaccineFilter);
+                if (selectedVaccine) {
+                    filters.vaccine_id = selectedVaccine.id;
+                }
+            }
+            
+            if (dateFilter) {
+                filters.date = dateFilter;
+            }
+            
+            // Get vaccinations with full backend filtering
+            vaccinations = await vaccinationApi.getVaccinations(filters);
 
             error = "";
         } catch (err) {
@@ -106,7 +164,8 @@
 
     async function loadPets() {
         try {
-            pets = await petApi.getPets();
+            allPets = await petApi.getPets();
+            pets = allPets; // Initially show all pets
         } catch (err) {
             console.error("Failed to load pets:", err);
         }
@@ -117,6 +176,14 @@
             vaccines = await vaccineApi.getVaccines();
         } catch (err) {
             console.error("Failed to load vaccines:", err);
+        }
+    }
+
+    async function loadUsers() {
+        try {
+            users = await userApi.getUsersByRole("client");
+        } catch (err) {
+            console.error("Failed to load users:", err);
         }
     }
 
@@ -169,10 +236,12 @@
     }
 
     function clearFilters() {
-        searchQuery = "";
+        clearTimeout(filterTimeout);
         dateFilter = "";
         petFilter = "";
         vaccineFilter = "";
+        userFilter = "";
+        loadVaccinations(); // Reload data without filters
     }
 
     function canCreateVaccinations(): boolean {
@@ -220,16 +289,22 @@
     <!-- Filters -->
     <div class="filters-section">
         <div class="filters-row">
-            <div class="filter-group">
-                <label for="searchFilter">Search</label>
-                <input
-                    type="text"
-                    id="searchFilter"
-                    placeholder="Search by pet name, vaccine, or remarks..."
-                    bind:value={searchQuery}
-                    class="filter-input"
-                />
-            </div>
+
+            {#if $user?.role === "staff" || $user?.role === "vet"}
+                <div class="filter-group">
+                    <label for="userFilter">Owner</label>
+                    <select
+                        id="userFilter"
+                        bind:value={userFilter}
+                        class="filter-select"
+                    >
+                        <option value="">All Owners</option>
+                        {#each users as user (user.id)}
+                            <option value={user.full_name}>{user.full_name}</option>
+                        {/each}
+                    </select>
+                </div>
+            {/if}
 
             <div class="filter-group">
                 <label for="petFilter">Pet</label>
@@ -239,9 +314,9 @@
                     class="filter-select"
                 >
                     <option value="">All Pets</option>
-                    {#each availablePets as pet (pet.id)}
+                    {#each pets as pet (pet.id)}
                         <option value={pet.name}
-                            >{pet.name} ({pet.owner_name})</option
+                            >{pet.name}</option
                         >
                     {/each}
                 </select>
@@ -285,9 +360,9 @@
 
     {#if isLoading}
         <div class="loading">Loading vaccination records...</div>
-    {:else if filteredVaccinations.length === 0}
+    {:else if vaccinations.length === 0}
         <div class="no-data">
-            {searchQuery || dateFilter || petFilter || vaccineFilter
+            {dateFilter || petFilter || vaccineFilter
                 ? "No vaccination records found matching your filters."
                 : "No vaccination records available yet."}
         </div>
@@ -308,7 +383,7 @@
                     </tr>
                 </thead>
                 <tbody>
-                    {#each filteredVaccinations as vaccination (vaccination.id)}
+                    {#each vaccinations as vaccination (vaccination.id)}
                         <tr>
                             <td>
                                 <strong>{vaccination.pet_name}</strong>
@@ -368,7 +443,7 @@
                             required
                         >
                             <option value={null}>Select a pet</option>
-                            {#each availablePets as pet (pet.id)}
+                            {#each pets as pet (pet.id)}
                                 <option value={pet.id}>
                                     {pet.name} ({pet.breed}) - {pet.owner_name}
                                 </option>
@@ -483,7 +558,7 @@
 
     .filters-row {
         display: grid;
-        grid-template-columns: 2fr 1.5fr 1.5fr 1fr auto;
+        grid-template-columns: 2fr 1.5fr 1.5fr 1.5fr 1fr auto;
         gap: 1rem;
         align-items: end;
     }

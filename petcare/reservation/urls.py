@@ -4,8 +4,8 @@ from . import views
 urlpatterns = [
     # User management
     path('users/', views.UserView.as_view(), name='user_list'),
-    path('users/<str:role>/', views.UserViewByRole.as_view(), name='user_list_by_role'),
     path('users/<int:user_id>/', views.UserDetailView.as_view(), name='user_detail'),
+    path('users/<str:role>/', views.UserViewByRole.as_view(), name='user_list_by_role'),
     
     # Pet management
     path('pets/', views.PetView.as_view(), name='pet_list_create'),

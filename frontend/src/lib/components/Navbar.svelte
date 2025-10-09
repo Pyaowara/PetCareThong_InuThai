@@ -73,13 +73,15 @@
 
 <style>
     .navbar {
-        background: linear-gradient(135deg, #daa520 0%, #b8860b 100%);
-        color: white;
+        background: rgba(255, 255, 255, 0.95);
+        backdrop-filter: blur(10px);
+        color: #333;
         padding: 1rem 0;
-        box-shadow: 0 2px 10px rgba(184, 134, 11, 0.2);
+        box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
         position: sticky;
         top: 0;
         z-index: 100;
+        border-bottom: 1px solid rgba(218, 165, 32, 0.2);
     }
 
     .nav-container {
@@ -92,36 +94,44 @@
     }
 
     .brand-link {
-        color: white;
+        background: linear-gradient(135deg, #daa520 0%, #b8860b 100%);
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+        background-clip: text;
         text-decoration: none;
         font-size: 1.5rem;
         font-weight: 700;
         margin: 0;
+        transition: all 0.3s ease;
     }
 
     .brand-link:hover {
-        color: rgba(255, 255, 255, 0.8);
+        opacity: 0.8;
+        transform: scale(1.05);
     }
 
     .nav-links {
         display: flex;
-        gap: 2rem;
+        gap: 0.5rem;
         align-items: center;
     }
 
     .nav-link {
-        color: white;
+        color: #555;
         text-decoration: none;
         font-weight: 500;
-        padding: 0.5rem 1rem;
-        border-radius: 6px;
+        padding: 0.6rem 1.2rem;
+        border-radius: 8px;
         transition: all 0.2s ease;
         font-size: 0.95rem;
+        position: relative;
     }
 
     .nav-link:hover {
-        background: rgba(255, 255, 255, 0.1);
-        color: rgba(255, 255, 255, 0.9);
+        background: linear-gradient(135deg, #daa520 0%, #b8860b 100%);
+        color: white;
+        transform: translateY(-2px);
+        box-shadow: 0 4px 12px rgba(218, 165, 32, 0.3);
     }
 
     .nav-user {
@@ -141,7 +151,8 @@
         height: 40px;
         border-radius: 50%;
         overflow: hidden;
-        border: 2px solid rgba(255, 255, 255, 0.3);
+        border: 2px solid #daa520;
+        box-shadow: 0 2px 8px rgba(218, 165, 32, 0.3);
     }
 
     .avatar-image {
@@ -153,7 +164,8 @@
     .avatar-initials {
         width: 100%;
         height: 100%;
-        background: rgba(255, 255, 255, 0.2);
+        background: linear-gradient(135deg, #daa520 0%, #b8860b 100%);
+        color: white;
         display: flex;
         align-items: center;
         justify-content: center;
@@ -170,31 +182,35 @@
     .user-name {
         font-weight: 600;
         font-size: 0.9rem;
+        color: #333;
     }
 
     .user-role {
         font-size: 0.75rem;
-        opacity: 0.8;
+        color: #888;
         text-transform: capitalize;
     }
 
     .logout-btn {
-        background: rgba(255, 255, 255, 0.1);
-        color: white;
-        border: 1px solid rgba(255, 255, 255, 0.3);
+        background: white;
+        color: #b8860b;
+        border: 2px solid #daa520;
         padding: 0.5rem 1rem;
-        border-radius: 6px;
+        border-radius: 8px;
         cursor: pointer;
         display: flex;
         align-items: center;
         gap: 0.5rem;
         font-size: 0.85rem;
+        font-weight: 600;
         transition: all 0.2s ease;
     }
 
     .logout-btn:hover {
-        background: rgba(255, 255, 255, 0.2);
-        border-color: rgba(255, 255, 255, 0.5);
+        background: linear-gradient(135deg, #daa520 0%, #b8860b 100%);
+        color: white;
+        transform: translateY(-2px);
+        box-shadow: 0 4px 12px rgba(218, 165, 32, 0.3);
     }
 
     @media (max-width: 768px) {

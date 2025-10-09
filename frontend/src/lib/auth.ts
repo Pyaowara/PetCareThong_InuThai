@@ -1,6 +1,6 @@
 import { writable } from 'svelte/store';
 import { browser } from '$app/environment';
-import { apiJson, apiFormData, API_CONFIG } from './api';
+import { apiJson, apiFormData } from './api';
 
 // User interface
 export interface User {
@@ -40,28 +40,29 @@ export const authService = {
     async login(email: string, password: string) {
         try {
             console.log('Attempting login for:', email);
-            
+
             const data = await apiJson('/auth/login/', {
                 method: 'POST',
                 body: JSON.stringify({ email, password })
             });
 
-            console.log('Login response:', data);
-            
             const userData = data.user;
             user.set(userData);
             isAuthenticated.set(true);
-            
+
             // Save to sessionStorage
             if (browser) {
                 sessionStorage.setItem('user', JSON.stringify(userData));
             }
-            
+
             return { success: true, user: userData };
         } catch (error) {
             console.error('Login error:', error);
-            const errorMessage = error instanceof Error ? error.message : 'Login failed';
-            return { success: false, error: errorMessage };
+            let friendlyError = error;
+            if (error instanceof TypeError && error.message === 'Failed to fetch') {
+                friendlyError = 'Cannot connect to server. Please try again later.';
+            }
+            return { success: false, error: friendlyError };
         }
     },
 
@@ -81,8 +82,11 @@ export const authService = {
             const data = await apiFormData('/auth/register/', formData);
             return { success: true, user: data.user };
         } catch (error) {
-            const errorMessage = error instanceof Error ? error.message : 'Registration failed';
-            return { success: false, error: errorMessage };
+            let friendlyError = error;
+            if (error instanceof TypeError && error.message === 'Failed to fetch') {
+                friendlyError = 'Cannot connect to server. Please try again later.';
+            }
+            return { success: false, error: friendlyError };
         }
     },
 
@@ -97,7 +101,7 @@ export const authService = {
             // Clear state regardless of API response
             user.set(null);
             isAuthenticated.set(false);
-            
+
             if (browser) {
                 sessionStorage.removeItem('user');
             }
@@ -107,29 +111,29 @@ export const authService = {
     async getProfile() {
         try {
             console.log('Fetching user profile...');
-            
+
             const userData = await apiJson('/auth/profile/');
-            
+
             console.log('Profile response:', userData);
-            
+
             user.set(userData);
             isAuthenticated.set(true);
-            
+
             if (browser) {
                 sessionStorage.setItem('user', JSON.stringify(userData));
             }
-            
+
             return userData;
         } catch (error) {
             console.error('Profile fetch error:', error);
             // Clear state without making logout API call if we're not authenticated
             user.set(null);
             isAuthenticated.set(false);
-            
+
             if (browser) {
                 sessionStorage.removeItem('user');
             }
-            
+
             return null;
         }
     }

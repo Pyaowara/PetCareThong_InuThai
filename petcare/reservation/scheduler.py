@@ -1,7 +1,5 @@
 # scheduler.py
 from apscheduler.schedulers.background import BackgroundScheduler
-from django_apscheduler.jobstores import DjangoJobStore
-from django_apscheduler.models import DjangoJobExecution
 from django.utils import timezone
 from datetime import timedelta
 from .models import Appointment
@@ -9,7 +7,7 @@ from .services import email_service
 
 def send_appointment_reminders():
     try:
-        target_date = timezone.now().date() + timedelta(days=2)
+        target_date = timezone.now().date() + timedelta(days=3)
         appointments = Appointment.objects.filter(
             status='confirmed',
             date__date=target_date
@@ -40,17 +38,8 @@ def send_appointment_reminders():
     except Exception as e:
         print(f"Error in reminder job: {str(e)}")
 
-def delete_old_job_executions(max_age=604_800):
-    DjangoJobExecution.objects.delete_old_job_executions(max_age)
-
 def start():
-    from django_apscheduler.jobstores import DjangoJobStore
-
     scheduler = BackgroundScheduler()
-    scheduler.add_jobstore(DjangoJobStore(), "default")
-    if scheduler.running:
-        print("Scheduler is already running. Exiting start function.")
-        return
     scheduler.add_job(
         send_appointment_reminders,
         trigger='cron',
@@ -62,22 +51,8 @@ def start():
     )
     print("✅ Added job 'send_appointment_reminders' to run daily at 9:00 AM")
 
-    scheduler.add_job(
-        delete_old_job_executions,
-        trigger="interval",
-        days=1,
-        id="delete_old_job_executions",
-        max_instances=1,
-        replace_existing=True,
-    )
-    print("Added daily job: 'delete_old_job_executions'.")
-
     try:
-        print(" Starting scheduler...")
+        print("Starting scheduler...")
         scheduler.start()
-    except KeyboardInterrupt:
-        print("Stopping scheduler...")
-        scheduler.shutdown()
-        print("Scheduler shut down successfully!")
     except Exception as e:
-        print(f" Error starting scheduler: {e}")
+        print(f"Error starting scheduler: {e}")

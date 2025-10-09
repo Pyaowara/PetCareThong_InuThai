@@ -2,21 +2,12 @@
     import { authService, isAuthenticated, user } from '$lib/auth';
     import { goto } from '$app/navigation';
     import { onMount } from 'svelte';
+    import backgroundImage from '$lib/assets/main_background.png';
 
     let email = '';
     let password = '';
     let isLoading = false;
     let error = '';
-
-    onMount(() => {
-        // Clear any existing auth state when visiting login (no API call)
-        user.set(null);
-        isAuthenticated.set(false);
-        
-        if (typeof sessionStorage !== 'undefined') {
-            sessionStorage.removeItem('user');
-        }
-    });
 
     async function handleLogin() {
         if (!email || !password) {
@@ -32,7 +23,25 @@
         if (result.success) {
             goto('/');
         } else {
-            error = result.error || 'Login failed';
+            let err = result.error || 'Login failed';
+            if (typeof err === 'object' && err !== null) {
+                const e = err as Record<string, unknown>;
+                if (Array.isArray(e['non_field_errors']) && e['non_field_errors'].length > 0) {
+                    err = e['non_field_errors'][0];
+                } else if (Array.isArray(e['detail'])) {
+                    err = e['detail'][0];
+                } else if (typeof e['detail'] === 'string') {
+                    err = e['detail'];
+                } else {
+                    const firstKey = Object.keys(e)[0];
+                    if (firstKey && Array.isArray(e[firstKey]) && e[firstKey].length > 0) {
+                        err = (e[firstKey] as any[])[0];
+                    } else if (firstKey && typeof e[firstKey] === 'string') {
+                        err = e[firstKey] as string;
+                    }
+                }
+            }
+            error = err;
         }
 
         isLoading = false;
@@ -47,7 +56,7 @@
     <title>Login - PetCare</title>
 </svelte:head>
 
-<div class="login-container">
+<div class="login-container no-scroll" style="background-image: url({backgroundImage});background-position: center; background-repeat: no-repeat; background-size: cover;">
     <div class="login-card">
         <div class="login-header">
             <div class="logo">🐾</div>
@@ -112,8 +121,6 @@
         display: flex;
         align-items: center;
         justify-content: center;
-        background: linear-gradient(135deg, #f8f6f0 0%, #fff8e1 100%);
-        padding: 2rem 1rem;
     }
 
     .login-card {
@@ -124,6 +131,7 @@
         border: 1px solid #f3e8a6;
         width: 100%;
         max-width: 400px;
+        align-items: center;
     }
 
     .login-header {

@@ -125,7 +125,7 @@
         editData.purpose = appointment.purpose;
         editData.remarks = appointment.remarks ?? '';
         // set date เป็น datetime-local format (yyyy-MM-ddTHH:mm)
-        editData.date = formatDate(appointment.date) + 'T' + new Date(appointment.date).toLocaleTimeString("en-US", { ...options, hour12: false, hour: "2-digit", minute: "2-digit" });
+        editData.date = formatDate(appointment.date) + 'T' + new Date(appointment.date).toLocaleTimeString("en-TH", { ...options, hour12: false, hour: "2-digit", minute: "2-digit" });
         editData.assigned_vet = appointment.assigned_vet?.id ?? null;
         editData.pet = appointment.pet;
         editData.status = appointment.status;
@@ -271,7 +271,7 @@
         return $user.role === 'staff' || (appointment.user.id === $user.id && appointment.status == 'booked');
     }
     function formatDatetime(dateString: string): string {
-        const date = new Date(dateString).toLocaleString("en-US", { timeZone: "Asia/Bangkok" });
+        const date = new Date(dateString).toLocaleString("en-TH", { timeZone: "Asia/Bangkok" });
         const dateObj = new Date(date);
         const dd = String(dateObj.getDate()).padStart(2, "0");
         const mm = String(dateObj.getMonth() + 1).padStart(2, "0");
@@ -282,7 +282,7 @@
     return `${dd}-${mm}-${yyyy} ${hh}:${min}`;
     }
     function formatDate(dateString: string): string {
-        const date = new Date(dateString).toLocaleString("en-US", { timeZone: "Asia/Bangkok" });
+        const date = new Date(dateString).toLocaleString("en-TH", { timeZone: "Asia/Bangkok" });
         const dateObj = new Date(date);
         const dd = String(dateObj.getDate()).padStart(2, "0");
         const mm = String(dateObj.getMonth() + 1).padStart(2, "0");

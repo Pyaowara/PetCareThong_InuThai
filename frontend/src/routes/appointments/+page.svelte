@@ -58,6 +58,7 @@
     let dateFilter = "";
     let petFilter = "";
     let statusFilter = "";
+    let userFilter = "";
     let showCreateModal = false;
     let showConfirm = false;
     // Form data
@@ -94,12 +95,16 @@
             !petFilter || appointment.pet_name === petFilter;
         const matchesStatus =
             !statusFilter || appointment.status === statusFilter;
+        const matchesUser = 
+            !userFilter || appointment.owner_name === userFilter;
 
-        return matchesSearch && matchesDate && matchesPet && matchesStatus;
+        return matchesSearch && matchesDate && matchesPet && matchesStatus && matchesUser;
     });
 
     $: availablePets = ($user?.role === 'staff' && appointmentForm.user)
         ? pets.filter(pet => pet.owner_id === appointmentForm.user)
+        : userFilter 
+        ? pets.filter(pet => pet.owner_name === userFilter)
         : pets;
     onMount(async () => {
         if (!$isAuthenticated) {
@@ -107,7 +112,12 @@
             return;
         }
 
-        await Promise.all([loadAppointments(), loadPets(), loadUsers(), loadVets()]);
+        await Promise.all([
+            loadAppointments(), 
+            loadPets(), 
+            ($user?.role === 'staff' || $user?.role === 'vet') ? loadUsers() : Promise.resolve(),
+            loadVets()
+        ]);
     });
 
     async function loadAppointments() {
@@ -236,6 +246,7 @@
         dateFilter = "";
         petFilter = "";
         statusFilter = "";
+        userFilter = "";
     }
 
     function cancreateAppointments(): boolean {
@@ -244,7 +255,7 @@
 
 
     function formatDate(dateString: string): string {
-        const date = new Date(dateString).toLocaleString("en-US", { timeZone: "Asia/Bangkok" });
+        const date = new Date(dateString).toLocaleString("en-TH", { timeZone: "Asia/Bangkok" });
         const dateObj = new Date(date);
         const dd = String(dateObj.getDate()).padStart(2, "0");
         const mm = String(dateObj.getMonth() + 1).padStart(2, "0");
@@ -252,7 +263,7 @@
         return `${yyyy}-${mm}-${dd}`;
     }
     function formatDatetime(dateString: string): string {
-        const date = new Date(dateString).toLocaleString("en-US", { timeZone: "Asia/Bangkok" });
+        const date = new Date(dateString).toLocaleString("en-TH", { timeZone: "Asia/Bangkok" });
         const dateObj = new Date(date);
         const dd = String(dateObj.getDate()).padStart(2, "0");
         const mm = String(dateObj.getMonth() + 1).padStart(2, "0");
@@ -264,7 +275,7 @@
     }
     function getTodayDate(): string {
         const today = new Date();
-        const dateInBangkok = new Date(today.toLocaleString("en-US", { timeZone: "Asia/Bangkok" }));
+        const dateInBangkok = new Date(today.toLocaleString("en-TH", { timeZone: "Asia/Bangkok" }));
         const dd = String(dateInBangkok.getDate()).padStart(2, "0");
         const mm = String(dateInBangkok.getMonth() + 1).padStart(2, "0");
         const yyyy = dateInBangkok.getFullYear();
@@ -313,6 +324,23 @@
                 />
             </div>
 
+            {#if $user?.role === 'staff' || $user?.role === 'vet'}
+            <div class="filter-group">
+                <label for="userFilter">Owner</label>
+                <select
+                    id="userFilter"
+                    bind:value={userFilter}
+                    class="filter-select"
+                >
+                    <option value="">All Owner</option>
+                    {#each users as userItem (userItem.id)}
+                        <option value={userItem.full_name}
+                            >{userItem.full_name} ({userItem.email})</option
+                        >
+                    {/each}
+                </select>
+            </div>
+            {/if}
             <div class="filter-group">
                 <label for="petFilter">Pet</label>
                 <select
@@ -328,6 +356,7 @@
                     {/each}
                 </select>
             </div>
+
 
             <div class="filter-group">
                 <label for="statusFilter">All Status</label>
@@ -354,12 +383,12 @@
                     class="filter-input"
                 />
             </div>
-
-            <div class="filter-group">
-                <button class="clear-filters-btn" on:click={clearFilters}>
-                    Clear Filters
-                </button>
-            </div>
+        </div>
+        
+        <div style="display: flex; justify-content: flex-end; margin-top: 10px;">
+            <button class="clear-filters-btn" on:click={clearFilters}>
+                Clear Filters
+            </button>
         </div>
     </div>
 
@@ -371,7 +400,7 @@
         <div class="loading">Loading Appointement records...</div>
     {:else if filteredAppointments.length === 0}
         <div class="no-data">
-            {searchQuery || dateFilter || petFilter || statusFilter
+            {searchQuery || dateFilter || petFilter || statusFilter || userFilter
                 ? "No Appointement records found matching your filters."
                 : "No Appointement records available yet."}
         </div>
@@ -502,7 +531,7 @@
                             <option value={null}>Select a pet</option>
                             {#each availablePets as pet (pet.id)}
                                 <option value={pet.id}>
-                                    {pet.name} {pet.owner_name}
+                                    {pet.name} ({pet.owner_name})
                                 </option>
                             {/each}
                         </select>

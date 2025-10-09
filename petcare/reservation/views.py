@@ -503,7 +503,7 @@ class UserViewByRole(APIView):
             user_service.check_authentication()
 
             
-            if not user_service.is_staff():
+            if not user_service.is_staff() and not user_service.is_vet():
                 return Response({'error': 'Staff access required'}, status=status.HTTP_403_FORBIDDEN)
 
             users = User.objects.all()

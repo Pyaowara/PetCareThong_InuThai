@@ -23,6 +23,7 @@
         gender?: string;
         age?: number;
         image_url?: string;
+        owner_id: number;
         owner_name: string;
     }
     interface User {
@@ -96,8 +97,10 @@
 
         return matchesSearch && matchesDate && matchesPet && matchesStatus;
     });
-    
-    $: availablePets = pets;
+
+    $: availablePets = ($user?.role === 'staff' && appointmentForm.user)
+        ? pets.filter(pet => pet.owner_id === appointmentForm.user)
+        : pets;
     onMount(async () => {
         if (!$isAuthenticated) {
             goto("/login");
@@ -163,10 +166,8 @@
             resetForm();
             showCreateModal = false;
         } catch (err) {
-            error =
-                err instanceof Error
-                    ? err.message
-                    : "Failed to create appointment record";
+            console.error('Error creating appointment:', err);
+            error = err instanceof Error ? `Failed to create appointment: ${err.message}` : `Failed to create appointment: ${JSON.stringify(err)}`;
         }
     }
     async function confirmAppointment() {
@@ -185,10 +186,8 @@
             statusData.assigned_vet = null;
             showConfirm = false;
         } catch (err) {
-            error =
-                err instanceof Error
-                    ? err.message
-                    : "Failed to create appointment record";
+            console.error('Error confirming appointment:', err);
+            error = err instanceof Error ? `Failed to confirm appointment: ${err.message}` : `Failed to confirm appointment: ${JSON.stringify(err)}`;
         }
     }
 
@@ -205,10 +204,8 @@
             await appointmentApi.updateStatus(appointment.id, {status:"rejected"});
             await loadAppointments();
         } catch (err) {
-            error =
-                err instanceof Error
-                    ? err.message
-                    : "Failed to reject appointment record";
+            console.error('Error rejecting appointment:', err);
+            error = err instanceof Error ? `Failed to reject appointment: ${err.message}` : `Failed to reject appointment: ${JSON.stringify(err)}`;
         }
     }
     async function cancelAppointment(appointment: Appointment) {
@@ -224,10 +221,8 @@
             await appointmentApi.updateStatus(appointment.id, {status:"cancelled"});
             await loadAppointments();
         } catch (err) {
-            error =
-                err instanceof Error
-                    ? err.message
-                    : "Failed to cancel appointment record";
+            console.error('Error cancelling appointment:', err);
+            error = err instanceof Error ? `Failed to cancel appointment: ${err.message}` : `Failed to cancel appointment: ${JSON.stringify(err)}`;
         }
     }
 
@@ -247,9 +242,6 @@
         return $user?.role === "staff" || $user?.role === "client";
     }
 
-    // function canrejectAppointment(): boolean {
-    //     return $user?.role === "staff";
-    // }
 
     function formatDate(dateString: string): string {
         const date = new Date(dateString).toLocaleString("en-US", { timeZone: "Asia/Bangkok" });
@@ -371,7 +363,7 @@
         </div>
     </div>
 
-    {#if error}
+    {#if error && !showCreateModal}
         <div class="error-message">{error}</div>
     {/if}
 
@@ -553,7 +545,9 @@
                             rows="3"
                         ></textarea>
                     </div>
-
+                    {#if error}
+                        <div class="error-message">{error}</div>
+                    {/if}
                     <div class="form-actions">
                         <button
                             type="button"
@@ -613,7 +607,7 @@
                             {/each}
                         </select>
                     </div>
-
+                    
                     <div class="form-actions">
                         <button
                             type="button"

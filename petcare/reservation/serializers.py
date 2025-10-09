@@ -4,6 +4,8 @@ from .models import *
 from .services import minio_service, get_user_service
 import uuid
 import os
+from datetime import timedelta
+from django.utils import timezone
 
 """Pattrapol Yaowaraj 66070148"""
 class UserSerializer(serializers.ModelSerializer):
@@ -225,11 +227,12 @@ class PetSerializer(serializers.ModelSerializer):
 class PetListSerializer(serializers.ModelSerializer):
     image_url = serializers.SerializerMethodField()
     age = serializers.SerializerMethodField()
+    owner_id = serializers.IntegerField(source='user.id', read_only=True)
     owner_name = serializers.CharField(source='user.full_name', read_only=True)
 
     class Meta:
         model = Pet
-        fields = ['id', 'name', 'breed', 'gender', 'age', 'image_url', 'owner_name']
+        fields = ['id', 'name', 'breed', 'gender', 'age', 'image_url', 'owner_name', 'owner_id']
 
     def get_image_url(self, obj):
         return obj.get_image_url()
@@ -308,16 +311,10 @@ class BookAppointmentSerializer(serializers.ModelSerializer):
                         raise serializers.ValidationError('Selected user is not a client.')
         return value
     def validate_date(self, value):
-        from datetime import timedelta
-        from django.utils import timezone
-
         appointment_time = timezone.localtime(value)
         now = timezone.localtime(timezone.now()) 
         if appointment_time < now:
             raise serializers.ValidationError("Appointment date cannot be in the past.")
-        if appointment_time - now < timedelta(days=3):
-            raise serializers.ValidationError("You must booked appointment before appointment date for 3 day.")
-       
         return value
     def validate_assigned_vet(self, value):
         request = self.context.get('request', None)
@@ -351,7 +348,10 @@ class BookAppointmentSerializer(serializers.ModelSerializer):
     def create(self, validated_data):
         request = self.context.get('request', None)
         user_service = getattr(request, 'user_service', None) if request else None
-
+        appointment_time = timezone.localtime(validated_data['date'])
+        now = timezone.localtime(timezone.now())
+        if appointment_time - now < timedelta(days=3):
+            raise serializers.ValidationError("You must booked appointment before appointment date for 3 day.")
         if user_service:
             if user_service.is_client():
                 validated_data['user'] = user_service.get_user()
@@ -370,6 +370,10 @@ class BookAppointmentSerializer(serializers.ModelSerializer):
     def update(self, instance, validated_data):
         request = self.context.get('request', None)
         user_service = getattr(request, 'user_service', None) if request else None
+        appointment_time = timezone.localtime(validated_data['date'])
+        now = timezone.localtime(timezone.now())
+        if appointment_time - now < timedelta(days=3) and appointment_time != instance.date:
+            raise serializers.ValidationError("You must booked appointment before appointment date for 3 day.")
         if user_service and user_service.is_client():
             if instance.status != 'booked':
                 raise serializers.ValidationError({'status': 'Client can\'t edit appoitment when status is not booked'})
@@ -397,26 +401,13 @@ class AppointmentSerializer(serializers.ModelSerializer):
 
 class AppointmentListSerializer(serializers.ModelSerializer):
     pet_name = serializers.CharField(source='pet.name', read_only=True)
-    pet_image_url = serializers.CharField(source='pet.get_image_url', read_only=True)
-    pet_breed = serializers.CharField(source='pet.breed', read_only=True)
-    pet_gender = serializers.CharField(source='pet.gender', read_only=True)
-    pet_age = serializers.SerializerMethodField()
     owner_name = serializers.CharField(source='user.full_name', read_only=True)
     owner_email = serializers.CharField(source='user.email', read_only=True)
     assigned_vet = serializers.CharField(source='assigned_vet.full_name', read_only=True)
     
-    def get_pet_age(self, obj):
-        from datetime import date
-        if obj.pet.birth_date:
-            today = date.today()
-            birth_date = obj.pet.birth_date
-            age = today.year - birth_date.year - ((today.month, today.day) < (birth_date.month, birth_date.day))
-            return age
-        return None
-    
     class Meta:
         model = Appointment
-        fields = ['id', 'date', 'pet_name', 'pet_image_url', 'pet_breed', 'pet_gender', 'pet_age', 'owner_name', 'status', 'purpose', 'owner_email', 'assigned_vet']
+        fields = ['id', 'date', 'pet_name', 'owner_name', 'status', 'purpose', 'owner_email', 'assigned_vet']
 
 
 class UpdateStatusSerializer(serializers.ModelSerializer):
@@ -465,9 +456,11 @@ class TreatmentSerializer(serializers.ModelSerializer):
         if appointment.status != 'confirmed':
             raise serializers.ValidationError({'appointment': 'Treatment can only be added to confirmed appointments.'})
         
-        with transaction.atomic(): 
+        with transaction.atomic():
+            vaccine = validated_data.get('vaccine')
+            if vaccine and service.title.lower() != 'getvaccine':
+                raise serializers.ValidationError({'vaccine': 'Vaccine can only be provided for "getVaccine" service.'})
             if service.title.lower() == 'getvaccine':
-                vaccine = validated_data.get('vaccine')
                 if not vaccine:
                     raise serializers.ValidationError({'vaccine': 'Vaccine is required when service is "getVaccine".'})
                 Vaccinated.objects.create(
@@ -489,12 +482,13 @@ class TreatmentSerializer(serializers.ModelSerializer):
 
 class UpdateTreatmentSerializer(serializers.Serializer):
     vet_note = serializers.CharField(required=False, allow_blank=True)
-    treatment = TreatmentSerializer(many=True, required=False)
+    treatment = TreatmentSerializer(many=True)
     def create(self, validated_data):
         
         vet_note = validated_data.get('vet_note', '')
         treatments_data = validated_data.get('treatment', [])
-        
+        if not treatments_data:
+            raise serializers.ValidationError({'treatment': 'At least one treatment is required.'})
         appointment = Appointment.objects.get(id=self.context.get('appointment_id'))
         if appointment.status != 'confirmed':
             raise serializers.ValidationError({'appointment': 'Treatments can only be added to confirmed appointments.'})

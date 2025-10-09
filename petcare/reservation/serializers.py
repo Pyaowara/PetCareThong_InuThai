@@ -116,7 +116,7 @@ class UserUpdateSerializer(serializers.ModelSerializer):
             current_password = data.get('current_password')
             if not current_password:
                 raise serializers.ValidationError("Current password is required to update your profile.")
-            
+
             if not user.check_password(current_password):
                 raise serializers.ValidationError("Current password is incorrect.")
 
@@ -397,12 +397,26 @@ class AppointmentSerializer(serializers.ModelSerializer):
 
 class AppointmentListSerializer(serializers.ModelSerializer):
     pet_name = serializers.CharField(source='pet.name', read_only=True)
+    pet_image_url = serializers.CharField(source='pet.get_image_url', read_only=True)
+    pet_breed = serializers.CharField(source='pet.breed', read_only=True)
+    pet_gender = serializers.CharField(source='pet.gender', read_only=True)
+    pet_age = serializers.SerializerMethodField()
     owner_name = serializers.CharField(source='user.full_name', read_only=True)
     owner_email = serializers.CharField(source='user.email', read_only=True)
     assigned_vet = serializers.CharField(source='assigned_vet.full_name', read_only=True)
+    
+    def get_pet_age(self, obj):
+        from datetime import date
+        if obj.pet.birth_date:
+            today = date.today()
+            birth_date = obj.pet.birth_date
+            age = today.year - birth_date.year - ((today.month, today.day) < (birth_date.month, birth_date.day))
+            return age
+        return None
+    
     class Meta:
         model = Appointment
-        fields = ['id', 'date', 'pet_name', 'owner_name', 'status', 'purpose', 'owner_email', 'assigned_vet']
+        fields = ['id', 'date', 'pet_name', 'pet_image_url', 'pet_breed', 'pet_gender', 'pet_age', 'owner_name', 'status', 'purpose', 'owner_email', 'assigned_vet']
 
 
 class UpdateStatusSerializer(serializers.ModelSerializer):

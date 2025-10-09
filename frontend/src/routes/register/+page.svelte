@@ -2,6 +2,7 @@
     import { authService, isAuthenticated, user } from '$lib/auth';
     import { goto } from '$app/navigation';
     import { onMount } from 'svelte';
+    import backgroundImage from '$lib/assets/main_background.png';
 
     let email = '';
     let fullName = '';
@@ -11,16 +12,6 @@
     let isLoading = false;
     let error = '';
     let success = '';
-
-    onMount(() => {
-        // Clear any existing auth state when visiting register (no API call)
-        user.set(null);
-        isAuthenticated.set(false);
-        
-        if (typeof sessionStorage !== 'undefined') {
-            sessionStorage.removeItem('user');
-        }
-    });
 
     async function handleRegister() {
         // Validation
@@ -72,7 +63,7 @@
     <title>Register - PetCare</title>
 </svelte:head>
 
-<div class="register-container">
+<div class="register-container" style="background-image: url({backgroundImage});background-position: center; background-repeat: no-repeat; background-size: cover;">
     <div class="register-card">
         <div class="register-header">
             <div class="logo">🐾</div>
@@ -182,8 +173,8 @@
         display: flex;
         align-items: center;
         justify-content: center;
-        background: linear-gradient(135deg, #f8f6f0 0%, #fff8e1 100%);
-        padding: 2rem 1rem;
+        /* background: linear-gradient(135deg, #f8f6f0 0%, #fff8e1 100%); */
+        /* padding: 2rem 1rem; */
     }
 
     .register-card {

@@ -4,6 +4,14 @@ from django.conf import settings
 from django.core.mail import send_mail
 from datetime import timedelta
 import io
+import threading
+
+def send_email_async(email_function, *args):
+    threading.Thread(
+        target=email_function,
+        args=args,
+        daemon=True
+    ).start()
 
 class MinIOService:
     def __init__(self):

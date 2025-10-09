@@ -57,7 +57,7 @@
         }
         
         // Check if user has permission to view user management
-        if ($user?.role === 'client') {
+        if ($user?.role === 'client' || $user?.role === 'vet') {
             // Clients can only view their own profile
             await loadOwnProfile();
         } else {
@@ -87,6 +87,7 @@
             users = [profile];
             error = '';
         } catch (err) {
+            console.error('Profile loading error:', err);
             error = err instanceof Error ? err.message : 'Failed to load profile';
         } finally {
             isLoading = false;
@@ -158,7 +159,7 @@
             }
             
             // For clients, current password is required
-            if ($user?.role === 'client') {
+            if ($user?.role === 'client' || $user?.role === 'vet') {
                 if (!profileForm.current_password) {
                     error = 'Current password is required to update your profile';
                     return;
@@ -179,7 +180,7 @@
             await userApi.updateUser(editingUser.id, formData);
             
             // Reload appropriate data based on user role
-            if ($user?.role === 'client') {
+            if ($user?.role === 'client' || $user?.role === 'vet') {
                 await loadOwnProfile();
             } else {
                 await loadUsers();
@@ -206,7 +207,7 @@
     }
 
     function canViewAllUsers(): boolean {
-        return $user?.role === 'staff' || $user?.role === 'vet';
+        return $user?.role === 'staff';
     }
 
     function canEditUser(targetUser: User): boolean {
@@ -260,7 +261,7 @@
     </div>
 
     {#if canViewAllUsers()}
-        <!-- Filters (only for staff/vet) -->
+        <!-- Filters (only for staff) -->
         <div class="filters-section">
             <div class="filters-row">
                 <div class="filter-group">
@@ -439,37 +440,6 @@
                             </div>
                         </div>
 
-                        <div class="profile-stats-section">
-                            <div class="section-header">
-                                <h2>Quick Links</h2>
-                            </div>
-                            
-                            <div class="quick-links">
-                                <a href="/pets" class="quick-link-card">
-                                    <div class="link-icon">🐾</div>
-                                    <div class="link-info">
-                                        <h3>My Pets</h3>
-                                        <p>View and manage your pets</p>
-                                    </div>
-                                </a>
-                                
-                                <a href="/vaccinations" class="quick-link-card">
-                                    <div class="link-icon">💉</div>
-                                    <div class="link-info">
-                                        <h3>Vaccinations</h3>
-                                        <p>Track vaccination records</p>
-                                    </div>
-                                </a>
-                                
-                                <a href="/vaccines" class="quick-link-card">
-                                    <div class="link-icon">🔬</div>
-                                    <div class="link-info">
-                                        <h3>Available Vaccines</h3>
-                                        <p>Browse vaccine information</p>
-                                    </div>
-                                </a>
-                            </div>
-                        </div>
                     </div>
                 </div>
             {/each}
@@ -533,7 +503,7 @@
                         </div>
                     {/if}
 
-                    {#if $user?.role === 'client'}
+                    {#if $user?.role === 'client' || $user?.role === 'vet'}
                         <div class="form-group">
                             <label for="currentPassword">Current Password *</label>
                             <input

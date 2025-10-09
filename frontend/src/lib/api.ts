@@ -90,8 +90,13 @@ export const apiJson = async (endpoint: string, options: RequestInit = {}) => {
     const response = await apiRequest(endpoint, options);
     
     if (!response.ok) {
-        const errorData = await response.text();
-        throw new Error(`HTTP ${response.status}: ${errorData}`);
+        let errorData;
+        try {
+            errorData = await response.json();
+        } catch {
+            errorData = await response.text();
+        }
+        throw errorData;
     }
     
     return response.json();

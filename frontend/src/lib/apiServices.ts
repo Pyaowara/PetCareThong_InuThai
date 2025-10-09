@@ -24,7 +24,7 @@ export const userApi = {
     // Update user status (Staff only)
     updateUserStatus: (userId: number, isActive: boolean) => apiJson(`/users/${userId}/`, {
         method: 'PUT',
-        body: JSON.stringify({ is_active: isActive })
+        body: JSON.stringify({ active: isActive })
     }),
     
     // Delete user (Staff only)
@@ -76,11 +76,13 @@ export const vaccineApi = {
 // Vaccination Management
 export const vaccinationApi = {
     // Get vaccinations with optional filters
-    getVaccinations: (filters: { pet_id?: number; vaccine_id?: number; owner_id?: number } = {}) => {
+    getVaccinations: (filters: { pet_id?: number; vaccine_id?: number; owner_id?: number; search?: string; date?: string } = {}) => {
         const params = new URLSearchParams();
         if (filters.pet_id) params.append('pet_id', filters.pet_id.toString());
         if (filters.vaccine_id) params.append('vaccine_id', filters.vaccine_id.toString());
         if (filters.owner_id) params.append('owner_id', filters.owner_id.toString());
+        if (filters.search) params.append('search', filters.search);
+        if (filters.date) params.append('date', filters.date);
         
         const queryString = params.toString();
         return apiJson(`/vaccinations/${queryString ? '?' + queryString : ''}`);

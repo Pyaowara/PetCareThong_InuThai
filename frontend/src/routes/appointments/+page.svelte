@@ -23,6 +23,7 @@
         gender?: string;
         age?: number;
         image_url?: string;
+        owner_id: number;
         owner_name: string;
     }
     interface User {
@@ -57,6 +58,7 @@
     let dateFilter = "";
     let petFilter = "";
     let statusFilter = "";
+    let userFilter = "";
     let showCreateModal = false;
     let showConfirm = false;
     // Form data
@@ -93,18 +95,29 @@
             !petFilter || appointment.pet_name === petFilter;
         const matchesStatus =
             !statusFilter || appointment.status === statusFilter;
+        const matchesUser = 
+            !userFilter || appointment.owner_name === userFilter;
 
-        return matchesSearch && matchesDate && matchesPet && matchesStatus;
+        return matchesSearch && matchesDate && matchesPet && matchesStatus && matchesUser;
     });
-    
-    $: availablePets = pets;
+
+    $: availablePets = ($user?.role === 'staff' && appointmentForm.user)
+        ? pets.filter(pet => pet.owner_id === appointmentForm.user)
+        : userFilter 
+        ? pets.filter(pet => pet.owner_name === userFilter)
+        : pets;
     onMount(async () => {
         if (!$isAuthenticated) {
             goto("/login");
             return;
         }
 
-        await Promise.all([loadAppointments(), loadPets(), loadUsers(), loadVets()]);
+        await Promise.all([
+            loadAppointments(), 
+            loadPets(), 
+            ($user?.role === 'staff' || $user?.role === 'vet') ? loadUsers() : Promise.resolve(),
+            loadVets()
+        ]);
     });
 
     async function loadAppointments() {
@@ -163,10 +176,8 @@
             resetForm();
             showCreateModal = false;
         } catch (err) {
-            error =
-                err instanceof Error
-                    ? err.message
-                    : "Failed to create appointment record";
+            console.error('Error creating appointment:', err);
+            error = err instanceof Error ? `Failed to create appointment: ${err.message}` : `Failed to create appointment: ${JSON.stringify(err)}`;
         }
     }
     async function confirmAppointment() {
@@ -185,10 +196,8 @@
             statusData.assigned_vet = null;
             showConfirm = false;
         } catch (err) {
-            error =
-                err instanceof Error
-                    ? err.message
-                    : "Failed to create appointment record";
+            console.error('Error confirming appointment:', err);
+            error = err instanceof Error ? `Failed to confirm appointment: ${err.message}` : `Failed to confirm appointment: ${JSON.stringify(err)}`;
         }
     }
 
@@ -205,10 +214,8 @@
             await appointmentApi.updateStatus(appointment.id, {status:"rejected"});
             await loadAppointments();
         } catch (err) {
-            error =
-                err instanceof Error
-                    ? err.message
-                    : "Failed to reject appointment record";
+            console.error('Error rejecting appointment:', err);
+            error = err instanceof Error ? `Failed to reject appointment: ${err.message}` : `Failed to reject appointment: ${JSON.stringify(err)}`;
         }
     }
     async function cancelAppointment(appointment: Appointment) {
@@ -224,10 +231,8 @@
             await appointmentApi.updateStatus(appointment.id, {status:"cancelled"});
             await loadAppointments();
         } catch (err) {
-            error =
-                err instanceof Error
-                    ? err.message
-                    : "Failed to cancel appointment record";
+            console.error('Error cancelling appointment:', err);
+            error = err instanceof Error ? `Failed to cancel appointment: ${err.message}` : `Failed to cancel appointment: ${JSON.stringify(err)}`;
         }
     }
 
@@ -241,18 +246,16 @@
         dateFilter = "";
         petFilter = "";
         statusFilter = "";
+        userFilter = "";
     }
 
     function cancreateAppointments(): boolean {
         return $user?.role === "staff" || $user?.role === "client";
     }
 
-    // function canrejectAppointment(): boolean {
-    //     return $user?.role === "staff";
-    // }
 
     function formatDate(dateString: string): string {
-        const date = new Date(dateString).toLocaleString("en-US", { timeZone: "Asia/Bangkok" });
+        const date = new Date(dateString).toLocaleString("en-TH", { timeZone: "Asia/Bangkok" });
         const dateObj = new Date(date);
         const dd = String(dateObj.getDate()).padStart(2, "0");
         const mm = String(dateObj.getMonth() + 1).padStart(2, "0");
@@ -260,7 +263,7 @@
         return `${yyyy}-${mm}-${dd}`;
     }
     function formatDatetime(dateString: string): string {
-        const date = new Date(dateString).toLocaleString("en-US", { timeZone: "Asia/Bangkok" });
+        const date = new Date(dateString).toLocaleString("en-TH", { timeZone: "Asia/Bangkok" });
         const dateObj = new Date(date);
         const dd = String(dateObj.getDate()).padStart(2, "0");
         const mm = String(dateObj.getMonth() + 1).padStart(2, "0");
@@ -272,7 +275,7 @@
     }
     function getTodayDate(): string {
         const today = new Date();
-        const dateInBangkok = new Date(today.toLocaleString("en-US", { timeZone: "Asia/Bangkok" }));
+        const dateInBangkok = new Date(today.toLocaleString("en-TH", { timeZone: "Asia/Bangkok" }));
         const dd = String(dateInBangkok.getDate()).padStart(2, "0");
         const mm = String(dateInBangkok.getMonth() + 1).padStart(2, "0");
         const yyyy = dateInBangkok.getFullYear();
@@ -321,6 +324,23 @@
                 />
             </div>
 
+            {#if $user?.role === 'staff' || $user?.role === 'vet'}
+            <div class="filter-group">
+                <label for="userFilter">Owner</label>
+                <select
+                    id="userFilter"
+                    bind:value={userFilter}
+                    class="filter-select"
+                >
+                    <option value="">All Owner</option>
+                    {#each users as userItem (userItem.id)}
+                        <option value={userItem.full_name}
+                            >{userItem.full_name} ({userItem.email})</option
+                        >
+                    {/each}
+                </select>
+            </div>
+            {/if}
             <div class="filter-group">
                 <label for="petFilter">Pet</label>
                 <select
@@ -336,6 +356,7 @@
                     {/each}
                 </select>
             </div>
+
 
             <div class="filter-group">
                 <label for="statusFilter">All Status</label>
@@ -362,16 +383,16 @@
                     class="filter-input"
                 />
             </div>
-
-            <div class="filter-group">
-                <button class="clear-filters-btn" on:click={clearFilters}>
-                    Clear Filters
-                </button>
-            </div>
+        </div>
+        
+        <div style="display: flex; justify-content: flex-end; margin-top: 10px;">
+            <button class="clear-filters-btn" on:click={clearFilters}>
+                Clear Filters
+            </button>
         </div>
     </div>
 
-    {#if error}
+    {#if error && !showCreateModal}
         <div class="error-message">{error}</div>
     {/if}
 
@@ -379,7 +400,7 @@
         <div class="loading">Loading Appointement records...</div>
     {:else if filteredAppointments.length === 0}
         <div class="no-data">
-            {searchQuery || dateFilter || petFilter || statusFilter
+            {searchQuery || dateFilter || petFilter || statusFilter || userFilter
                 ? "No Appointement records found matching your filters."
                 : "No Appointement records available yet."}
         </div>
@@ -510,7 +531,7 @@
                             <option value={null}>Select a pet</option>
                             {#each availablePets as pet (pet.id)}
                                 <option value={pet.id}>
-                                    {pet.name} {pet.owner_name}
+                                    {pet.name} ({pet.owner_name})
                                 </option>
                             {/each}
                         </select>
@@ -553,7 +574,9 @@
                             rows="3"
                         ></textarea>
                     </div>
-
+                    {#if error}
+                        <div class="error-message">{error}</div>
+                    {/if}
                     <div class="form-actions">
                         <button
                             type="button"
@@ -613,7 +636,7 @@
                             {/each}
                         </select>
                     </div>
-
+                    
                     <div class="form-actions">
                         <button
                             type="button"

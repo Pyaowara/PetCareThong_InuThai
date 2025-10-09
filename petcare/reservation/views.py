@@ -503,7 +503,7 @@ class UserViewByRole(APIView):
             user_service.check_authentication()
 
             
-            if not user_service.is_staff():
+            if not user_service.is_staff() and not user_service.is_vet():
                 return Response({'error': 'Staff access required'}, status=status.HTTP_403_FORBIDDEN)
 
             users = User.objects.all()
@@ -650,9 +650,6 @@ class BookAppointmentView(APIView):
             user_service.check_authentication()
             request.user_service = user_service
             appointment = Appointment.objects.select_related('user').get(id=appointment_id)
-            if user_service.is_client() and appointment.status != 'booked':
-                return Response({'error': 'You can\'t edit Appointment when status is confirmed'}, status=status.HTTP_403_FORBIDDEN)
-            
             serializer = BookAppointmentSerializer(appointment, data=request.data, partial=True, context={'request': request})
             if serializer.is_valid():
                 app = serializer.save()

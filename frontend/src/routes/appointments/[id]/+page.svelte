@@ -31,6 +31,16 @@
         created_at: string;
         image_url?: string;
     }
+    interface PetChoice {
+        id: number;
+        name: string;
+        breed: string;
+        gender?: string;
+        age?: number;
+        image_url?: string;
+        owner_id: number;
+        owner_name: string;
+    }
     interface Pet {
         id: number;
         user: number;
@@ -76,7 +86,7 @@
         vaccine: Vaccine | null; // Add this field
     }
 
-    let appointment: Appointment | null = null;
+    let appointment: Appointment;
     // let pet: Pet | null = null;
     let vaccines: Vaccine[] = [];
     let isLoading = false;
@@ -85,7 +95,7 @@
     let isEditing = false;
     let isUpdatingTreatment = false;
     let vets: User[] = [];
-    let pets: Pet[] = [];
+    let pets: PetChoice[] = [];
     let services: Service[] = [];
     let treatments: Treatment[] = [];
     let vetNote: string = '';
@@ -109,11 +119,13 @@
 
     let selectedPetId: number | null = null;
 
+    $: availablePetsForEdit = appointment ? pets.filter(pet => pet.owner_id === appointment.user.id) : [];
+
     $: if (appointment && isEditing) {
         editData.purpose = appointment.purpose;
         editData.remarks = appointment.remarks ?? '';
         // set date เป็น datetime-local format (yyyy-MM-ddTHH:mm)
-        editData.date = appointment.date ? new Date(appointment.date).toISOString().slice(0,16) : '';
+        editData.date = formatDate(appointment.date) + 'T' + new Date(appointment.date).toLocaleTimeString("en-TH", { ...options, hour12: false, hour: "2-digit", minute: "2-digit" });
         editData.assigned_vet = appointment.assigned_vet?.id ?? null;
         editData.pet = appointment.pet;
         editData.status = appointment.status;
@@ -188,29 +200,6 @@
         }
     }
 
-    // async function updatePet() {
-    //     if (!pet) return;
-        
-    //     try {
-    //         const formData = new FormData();
-    //         formData.append('name', editData.name);
-    //         formData.append('breed', editData.breed);
-    //         formData.append('color', editData.color);
-    //         formData.append('gender', editData.gender);
-    //         formData.append('birth_date', editData.birth_date);
-    //         formData.append('neutered_status', editData.neutered_status.toString());
-    //         if (editData.allergic) formData.append('allergic', editData.allergic);
-    //         if (editData.marks) formData.append('marks', editData.marks);
-    //         if (editData.chronic_conditions) formData.append('chronic_conditions', editData.chronic_conditions);
-    //         if (editData.image) formData.append('image', editData.image);
-
-    //         await petApi.updatePet(pet.id, formData);
-    //         await loadPetDetails();
-    //         isEditing = false;
-    //     } catch (err) {
-    //         error = err instanceof Error ? err.message : 'Failed to update pet';
-    //     }
-    // }
 
     async function updateAppointment() {
         if (!appointment) return;
@@ -232,7 +221,8 @@
             await loadAppointment();
             isEditing = false;
         } catch (err) {
-            error = err instanceof Error ? err.message : 'Failed to update appointment';
+            console.error('Error updating appointment:', err);
+            error = err instanceof Error ? `Failed to update appointment: ${err.message}` : `Failed to update appointment: ${JSON.stringify(err)}`;
         }
     }
 
@@ -270,7 +260,9 @@
             treatments = [];
             vetNote = '';
         } catch (err) {
-            error = err instanceof Error ? err.message : 'Failed to update treatment';
+
+            console.error('Error updating treatment:', err);
+            error = err instanceof Error ? `Failed to update treatment: ${err.message}` : `Failed to update treatment: ${JSON.stringify(err)}`;
         }
     }
 
@@ -279,7 +271,7 @@
         return $user.role === 'staff' || (appointment.user.id === $user.id && appointment.status == 'booked');
     }
     function formatDatetime(dateString: string): string {
-        const date = new Date(dateString).toLocaleString("en-US", { timeZone: "Asia/Bangkok" });
+        const date = new Date(dateString).toLocaleString("en-TH", { timeZone: "Asia/Bangkok" });
         const dateObj = new Date(date);
         const dd = String(dateObj.getDate()).padStart(2, "0");
         const mm = String(dateObj.getMonth() + 1).padStart(2, "0");
@@ -290,7 +282,7 @@
     return `${dd}-${mm}-${yyyy} ${hh}:${min}`;
     }
     function formatDate(dateString: string): string {
-        const date = new Date(dateString).toLocaleString("en-US", { timeZone: "Asia/Bangkok" });
+        const date = new Date(dateString).toLocaleString("en-TH", { timeZone: "Asia/Bangkok" });
         const dateObj = new Date(date);
         const dd = String(dateObj.getDate()).padStart(2, "0");
         const mm = String(dateObj.getMonth() + 1).padStart(2, "0");
@@ -304,7 +296,7 @@
 </svelte:head>
 
 <div class="pet-detail-container">
-    {#if error}
+    {#if error && !isEditing && !isUpdatingTreatment}
         <div class="error-message">{error}</div>
     {/if}
 
@@ -365,7 +357,7 @@
                             <span class="label">Remarks</span>
                             <span class="value remarks">{appointment.remarks || '-'}</span>
                         </div>
-                        {#if appointment.vet_note}
+                        {#if appointment.status === 'completed'}
                             <div class="info-item full-width">
                                 <span class="label">Vet Note</span>
                                 <span class="value remarks">{appointment.vet_note || '-'}</span>
@@ -536,7 +528,7 @@
                         <label for="editPet">Pet *</label>
                         <select id="editPet" bind:value={selectedPetId} required>
                             <option value={null}>Select Pet</option>
-                            {#each pets as pet_choice (pet_choice.id)}
+                            {#each availablePetsForEdit as pet_choice (pet_choice.id)}
                                 <option value={pet_choice.id}>{pet_choice.name} ({pet_choice.breed})</option>
                             {/each}
                         </select>
@@ -580,6 +572,9 @@
                             </select>
                             <small>Current: {appointment.assigned_vet?.full_name || 'Not assign now'}</small>
                         </div>
+                    {/if}
+                    {#if error}
+                        <div class="error-message">{error}</div>
                     {/if}
                     <div class="form-actions">
                         <button type="button" class="cancel-btn" on:click={() => isEditing = false}>
@@ -630,7 +625,7 @@
                                         bind:value={treatment.description} 
                                         placeholder="Enter treatment description" required></textarea>
                                 </div>
-                                {#if treatment.service === 1} 
+                                {#if services.find(s => s.id === treatment.service)?.title?.toLowerCase() === 'getvaccine'} 
                                 <div class="form-group">
                                     <label for="vaccine{i}">Vaccine</label>
                                     <select id="vaccine{i}" bind:value={treatment.vaccine}>
@@ -648,7 +643,9 @@
                     <button type="button" class="add-treatment-btn" on:click={addTreatmentCard}>
                         + Add Treatment
                     </button>
-
+                    {#if error}
+                        <div class="error-message">{error}</div>
+                    {/if}
                     <div class="form-actions">
                         <button type="button" class="cancel-btn" 
                             on:click={() => isUpdatingTreatment = false}>

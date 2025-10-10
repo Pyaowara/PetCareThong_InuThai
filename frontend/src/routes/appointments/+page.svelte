@@ -283,7 +283,14 @@
         const min = String(dateInBangkok.getMinutes()).padStart(2, "0");
         return `${yyyy}-${mm}-${dd}`;
     }
-
+    
+    function getMinTime(): string {
+        const now = new Date();
+        // Add 3 days to current date
+        now.setDate(now.getDate() + 3);
+        now.setMinutes(now.getMinutes() - now.getTimezoneOffset());
+        return now.toISOString().slice(0,16); 
+    }
     // Set default date to today when modal opens
     $: if (showCreateModal && !appointmentForm.date) {
         appointmentForm.date = getTodayDate();
@@ -550,7 +557,7 @@
                             type="datetime-local"
                             id="formDate"
                             bind:value={appointmentForm.date}
-                            max={getTodayDate()}
+                            min={getMinTime()}
                             required
                         />
                     </div>

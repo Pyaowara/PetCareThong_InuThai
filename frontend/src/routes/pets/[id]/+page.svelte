@@ -230,6 +230,9 @@
     function viewAppointment(appointmentId: number) {
         goto(`/appointments/${appointmentId}`);
     }
+    function getTodayDate(): string {
+        return new Date().toISOString().split("T")[0];
+    }
 </script>
 
 <svelte:head>
@@ -237,7 +240,7 @@
 </svelte:head>
 
 <div class="pet-detail-container">
-    {#if error}
+    {#if error && !showAddVaccination && !isEditing}
         <div class="error-message">{error}</div>
     {/if}
 
@@ -453,7 +456,9 @@
                         <label for="editImage">Update Photo</label>
                         <input type="file" id="editImage" accept="image/*" on:change={handleImageChange} />
                     </div>
-                    
+                    {#if error}
+                        <div class="error-message">{error}</div>
+                    {/if}
                     <div class="form-actions">
                         <button type="button" class="cancel-btn" on:click={() => isEditing = false}>
                             Cancel
@@ -483,14 +488,16 @@
                     
                     <div class="form-group">
                         <label for="date">Vaccination Date *</label>
-                        <input type="date" id="date" bind:value={newVaccination.date} required />
+                        <input type="date" id="date" bind:value={newVaccination.date} max={getTodayDate()} required />
                     </div>
                     
                     <div class="form-group">
                         <label for="remarks">Remarks</label>
                         <textarea id="remarks" bind:value={newVaccination.remarks} rows="3"></textarea>
                     </div>
-                    
+                    {#if error}
+                        <div class="error-message">{error}</div>
+                    {/if}
                     <div class="form-actions">
                         <button type="button" class="cancel-btn" on:click={() => showAddVaccination = false}>
                             Cancel

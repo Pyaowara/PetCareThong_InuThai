@@ -108,7 +108,7 @@ class Appointment(models.Model):
         related_name='vet_appointments'
     )
     vet_note = models.TextField(blank=True, null=True)
-    created_at = models.DateTimeField(auto_now_add=True)
+    created_at = models.DateTimeField(default=timezone.now)
     updated_at = models.DateTimeField(auto_now=True)
 
     def __str__(self):

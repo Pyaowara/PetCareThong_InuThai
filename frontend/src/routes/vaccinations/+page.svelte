@@ -210,25 +210,7 @@
         }
     }
 
-    async function deleteVaccination(vaccination: Vaccination) {
-        if (
-            !confirm(
-                `Are you sure you want to delete this vaccination record for ${vaccination.pet_name}?`,
-            )
-        ) {
-            return;
-        }
 
-        try {
-            await vaccinationApi.deleteVaccination(vaccination.id);
-            await loadVaccinations();
-        } catch (err) {
-            error =
-                err instanceof Error
-                    ? err.message
-                    : "Failed to delete vaccination record";
-        }
-    }
 
     function resetForm() {
         vaccinationForm = { pet: null, vaccine: null, date: "", remarks: "" };
@@ -248,9 +230,7 @@
         return $user?.role === "staff" || $user?.role === "vet";
     }
 
-    function canDeleteVaccination(): boolean {
-        return $user?.role === "staff" || $user?.role === "vet";
-    }
+
 
     function formatDate(dateString: string): string {
         return new Date(dateString).toLocaleDateString();
@@ -377,9 +357,6 @@
                         <th>Date</th>
                         <th>Remarks</th>
                         <th>Owner</th>
-                        {#if canDeleteVaccination()}
-                            <th>Actions</th>
-                        {/if}
                     </tr>
                 </thead>
                 <tbody>
@@ -393,17 +370,6 @@
                             <td>{formatDate(vaccination.date)}</td>
                             <td>{vaccination.remarks || "-"}</td>
                             <td>{vaccination.owner_name || "Unknown"}</td>
-                            {#if canDeleteVaccination()}
-                                <td>
-                                    <button
-                                        class="delete-btn"
-                                        on:click={() =>
-                                            deleteVaccination(vaccination)}
-                                    >
-                                        Delete
-                                    </button>
-                                </td>
-                            {/if}
                         </tr>
                     {/each}
                 </tbody>
@@ -639,19 +605,6 @@
         font-style: italic;
     }
 
-    .delete-btn {
-        background: #dc3545;
-        color: white;
-        border: none;
-        padding: 0.4rem 0.8rem;
-        border-radius: 4px;
-        cursor: pointer;
-        font-size: 0.85rem;
-    }
-
-    .delete-btn:hover {
-        background: #c82333;
-    }
 
     .modal-overlay {
         position: fixed;

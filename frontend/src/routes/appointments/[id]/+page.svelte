@@ -316,6 +316,14 @@
         const yyyy = dateObj.getFullYear();
         return `${yyyy}-${mm}-${dd}`;
     }
+
+    function getMinTime(): string {
+        const now = new Date();
+        // Add 3 days to current date
+        now.setDate(now.getDate() + 3);
+        now.setMinutes(now.getMinutes() - now.getTimezoneOffset());
+        return now.toISOString().slice(0,16); 
+    }
 </script>
 
 <svelte:head>
@@ -578,7 +586,7 @@
                     </div>
                     <div class="form-group">
                         <label for="editDate">Appointment Date *</label>
-                        <input type="datetime-local" id="editDate" bind:value={editData.date} required />
+                        <input type="datetime-local" id="editDate" bind:value={editData.date} min={getMinTime()} required />
                         <small>Current: {formatDatetime(appointment.date)}</small>
                     </div>
                     

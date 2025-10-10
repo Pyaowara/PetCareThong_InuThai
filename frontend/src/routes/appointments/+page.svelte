@@ -350,9 +350,15 @@
                 >
                     <option value="">All Pets</option>
                     {#each availablePets as pet (pet.id)}
+                        {#if userFilter !== ''}
+                                <option value={pet.name}
+                                    >{pet.name}</option
+                                >
+                        {:else}
                         <option value={pet.name}
                             >{pet.name} ({pet.owner_name})</option
                         >
+                        {/if}
                     {/each}
                 </select>
             </div>

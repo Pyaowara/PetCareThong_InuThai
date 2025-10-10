@@ -237,10 +237,15 @@ class PetDetailView(APIView):
             pet_serializer = PetSerializer(pet)
             vaccinations = Vaccinated.objects.filter(pet=pet).select_related('vaccine').order_by('-date')
             vaccination_serializer = VaccinatedSerializer(vaccinations, many=True)
+            
+            appointments = Appointment.objects.filter(pet=pet).select_related('user', 'assigned_vet').order_by('-date')
+            appointment_serializer = AppointmentListSerializer(appointments, many=True)
 
             response_data = pet_serializer.data.copy()
             response_data['vaccinations'] = vaccination_serializer.data
             response_data['total_vaccinations'] = len(vaccination_serializer.data)
+            response_data['appointments'] = appointment_serializer.data
+            response_data['total_appointments'] = len(appointment_serializer.data)
 
             return Response(response_data)
         except Pet.DoesNotExist:
@@ -322,7 +327,7 @@ class VaccineView(APIView):
             user_service = get_user_service(request)
             user_service.check_authentication()
             
-            if user_service.is_client():
+            if user_service.is_client() or user_service.is_vet():
                 return Response({'error': 'Staff access required'}, status=status.HTTP_403_FORBIDDEN)
             
             serializer = VaccineSerializer(data=request.data)

@@ -60,6 +60,10 @@
         }
     }
 
+    function getTodayDate(): string {
+        return new Date().toISOString().split("T")[0];
+    }
+
     async function loadPets() {
         try {
             isLoading = true;
@@ -208,7 +212,7 @@
                     <div class="form-row">
                         <div class="form-group">
                             <label for="birth_date">Birth Date *</label>
-                            <input type="date" id="birth_date" bind:value={newPet.birth_date} required />
+                            <input type="date" id="birth_date" bind:value={newPet.birth_date} max={getTodayDate()} required />
                         </div>
                         <div class="form-group">
                             <label for="color">Color *</label>

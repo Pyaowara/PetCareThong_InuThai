@@ -166,6 +166,12 @@ class PetSerializer(serializers.ModelSerializer):
             'allergic', 'marks', 'chronic_conditions', 'neutered_status', 
             'birth_date', 'image', 'image_url', 'age', 'owner_id'
         ]
+    
+    def validate_birth_date(self, value):
+        from datetime import date
+        if value > date.today():
+            raise serializers.ValidationError("Birth date cannot be in the future.")
+        return value
 
     def get_image_url(self, obj):
         return obj.get_image_url()

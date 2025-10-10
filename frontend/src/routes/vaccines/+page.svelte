@@ -110,7 +110,7 @@
     }
 
     function canManageVaccines(): boolean {
-        return $user?.role === 'staff' || $user?.role === 'vet';
+        return $user?.role === 'staff';
     }
 
     function formatDate(dateString: string): string {
@@ -124,7 +124,7 @@
 
 <div class="vaccines-container">
     <div class="vaccines-header">
-        <h1>Vaccines Management</h1>
+        <h1>Vaccines available</h1>
         
         <div class="header-actions">
             <div class="search-container">

@@ -94,6 +94,7 @@
     let showAddVaccination = false;
     let isEditing = false;
     let isUpdatingTreatment = false;
+    let showConfirm = false;
     let vets: User[] = [];
     let pets: PetChoice[] = [];
     let services: Service[] = [];
@@ -108,6 +109,11 @@
         status: '',
         assigned_vet: null as number | null,
         pet: null as Pet | null,
+    };
+
+    // Status update data for confirmation
+    let statusData = {
+        assigned_vet: null as number | null,
     };
 
     // Vaccination form data
@@ -226,6 +232,27 @@
         }
     }
 
+    async function confirmAppointment() {
+        if (!appointment || !statusData.assigned_vet) {
+            error = "Assigned vet is required";
+            return;
+        }
+
+        try {
+            await appointmentApi.updateStatus(appointment.id, {
+                status: "confirmed", 
+                assigned_vet: statusData.assigned_vet
+            });
+            await loadAppointment();
+            statusData.assigned_vet = null;
+            showConfirm = false;
+            error = '';
+        } catch (err) {
+            console.error('Error confirming appointment:', err);
+            error = err instanceof Error ? `Failed to confirm appointment: ${err.message}` : `Failed to confirm appointment: ${JSON.stringify(err)}`;
+        }
+    }
+
     function addTreatmentCard() {
         treatments = [...treatments, { 
             service: 0, 
@@ -319,6 +346,11 @@
                     </button>
                     
                 {/if}
+                {#if $user?.role === 'staff' && appointment.status === 'booked'}
+                    <button class="confirm-btn" on:click={() => showConfirm = true}>
+                        Confirm & Assign Vet
+                    </button>
+                {/if}
                 {#if $user?.role === 'vet' && appointment.status === 'confirmed'}
                         <button class="treatment-btn" on:click={() => isUpdatingTreatment = true}>
                             Update Treatment
@@ -384,7 +416,7 @@
                     <h2>🐾 Pet Information</h2>
                 </div>
                 <div class="card-content">
-                    <div class="pet-profile">
+                    <div class="pet-profile" on:click={() => goto(`/pets/${appointment.pet.id}`)} style="cursor: pointer;">
                         <div class="pet-image-container">
                             {#if appointment.pet.image_url}
                                 <img src={appointment.pet.image_url} alt={appointment.pet.name} />
@@ -660,6 +692,55 @@
         </div>
     {/if}
 
+    <!-- Confirm Appointment Modal -->
+    {#if showConfirm}
+        <div class="modal-overlay" role="dialog" tabindex="-1" 
+            on:click={() => {
+                showConfirm = false;
+                statusData.assigned_vet = null;
+            }} 
+            on:keydown={(e) => e.key === 'Escape' && (showConfirm = false, statusData.assigned_vet = null)}>
+            <div class="modal-content" role="document" tabindex="0" 
+                on:click|stopPropagation on:keydown|stopPropagation>
+                <div class="modal-header">
+                    <h2>Confirm Appointment</h2>
+                    <button class="close-btn" on:click={() => showConfirm = false}>&times;</button>
+                </div>
+                
+                <form on:submit|preventDefault={confirmAppointment} class="confirm-form">
+                    <div class="form-group">
+                        <label for="assigned_vet">Assign Veterinarian *</label>
+                        <select id="assigned_vet" bind:value={statusData.assigned_vet} required>
+                            <option value={null}>Select a veterinarian</option>
+                            {#each vets as vet (vet.id)}
+                                <option value={vet.id}>{vet.full_name}</option>
+                            {/each}
+                        </select>
+                        <small>Confirming this appointment will change its status to "confirmed" and assign the selected veterinarian.</small>
+                    </div>
+                    
+                    {#if error}
+                        <div class="error-message">{error}</div>
+                    {/if}
+                    
+                    <div class="form-actions">
+                        <button type="button" class="cancel-btn" 
+                            on:click={() => {
+                                showConfirm = false;
+                                statusData.assigned_vet = null;
+                            }}
+                        >
+                            Cancel
+                        </button>
+                        <button type="submit" class="confirm-submit-btn">
+                            Confirm Appointment
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    {/if}
+
    
 </div>
 
@@ -803,6 +884,15 @@
         display: flex;
         gap: 1.5rem;
         margin-bottom: 2rem;
+        border: 2px solid #f3e8a6;
+        padding: 1rem;
+        border-radius: 12px;
+    }
+
+    .pet-profile:hover {
+        box-shadow: 0 4px 12px rgba(184, 134, 11, 0.2);
+        transform: scale(1.02);
+        transition: transform 0.2s ease;
     }
 
     .pet-image-container {
@@ -1116,6 +1206,38 @@
         margin-left: 0.5rem;
     }
 
+    .confirm-btn {
+        background: linear-gradient(135deg, #28a745 0%, #00d091 100%);
+        color: white;
+        border: none;
+        padding: 0.75rem 1.5rem;
+        border-radius: 8px;
+        font-weight: 600;
+        cursor: pointer;
+        transition: transform 0.2s ease;
+    }
+
+    .confirm-btn:hover {
+        transform: translateY(-1px);
+    }
+
+    .confirm-submit-btn {
+        background: linear-gradient(135deg, #28a745 0%, #20c997 100%);
+        color: white;
+        border: none;
+        padding: 0.75rem 1.5rem;
+        border-radius: 8px;
+        cursor: pointer;
+        font-weight: 600;
+        box-shadow: 0 2px 4px rgba(40, 167, 69, 0.2);
+        transition: all 0.2s ease;
+    }
+
+    .confirm-submit-btn:hover {
+        transform: translateY(-1px);
+        box-shadow: 0 4px 8px rgba(40, 167, 69, 0.3);
+    }
+
     .treatments-container {
         display: flex;
         flex-direction: column;
@@ -1177,5 +1299,92 @@
         font-size: 1.5rem;
         cursor: pointer;
         color: #666;
+    }
+
+    /* Modal styles */
+    .modal-overlay {
+        position: fixed;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background: rgba(0, 0, 0, 0.5);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        z-index: 1000;
+        padding: 2rem;
+    }
+
+    .modal-content {
+        background: white;
+        border-radius: 12px;
+        padding: 2rem;
+        width: 100%;
+        max-width: 500px;
+        max-height: 90vh;
+        overflow-y: auto;
+        box-shadow: 0 10px 25px rgba(0, 0, 0, 0.2);
+    }
+
+    .confirm-form {
+        display: flex;
+        flex-direction: column;
+        gap: 1rem;
+    }
+
+    .form-group {
+        display: flex;
+        flex-direction: column;
+        gap: 0.5rem;
+    }
+
+    .form-group label {
+        font-weight: 600;
+        color: #333;
+    }
+
+    .form-group input, 
+    .form-group select, 
+    .form-group textarea {
+        padding: 0.75rem;
+        border: 2px solid #f3e8a6;
+        border-radius: 8px;
+        font-size: 0.95rem;
+        transition: border-color 0.2s ease;
+    }
+
+    .form-group input:focus, 
+    .form-group select:focus, 
+    .form-group textarea:focus {
+        outline: none;
+        border-color: #daa520;
+    }
+
+    .form-group small {
+        color: #666;
+        font-size: 0.875rem;
+        font-style: italic;
+    }
+
+    .form-actions {
+        display: flex;
+        gap: 1rem;
+        justify-content: flex-end;
+        margin-top: 1rem;
+    }
+
+    .cancel-btn {
+        background: #6c757d;
+        color: white;
+        border: none;
+        padding: 0.75rem 1.5rem;
+        border-radius: 8px;
+        cursor: pointer;
+        transition: background 0.2s ease;
+    }
+
+    .cancel-btn:hover {
+        background: #5a6268;
     }
 </style>

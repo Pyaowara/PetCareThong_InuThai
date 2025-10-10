@@ -124,6 +124,7 @@ export const serviceApi = {
 
 export const appointmentApi = {
     getAppointment: () => apiJson('/appointments/'),
+    getAppointmentsByPet: (petId: number) => apiJson(`/pets/${petId}/appointments/`),
     bookAppointment: (appointmentData: any) => apiJson('/appointments/book/', {
         method: 'POST',
         body: JSON.stringify(appointmentData)

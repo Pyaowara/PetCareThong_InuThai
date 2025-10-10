@@ -3,7 +3,7 @@
     import { goto } from '$app/navigation';
     import { page } from '$app/stores';
     import { isAuthenticated, user, authService } from '$lib/auth';
-    import { petApi, vaccinationApi, vaccineApi } from '$lib/apiServices';
+    import { petApi, vaccinationApi, vaccineApi, appointmentApi } from '$lib/apiServices';
 
     interface Pet {
         id: number;
@@ -21,6 +21,8 @@
         age: number;
         vaccinations?: Vaccination[];
         total_vaccinations?: number;
+        appointments?: Appointment[];
+        total_appointments?: number;
     }
 
     interface Vaccination {
@@ -29,6 +31,21 @@
         vaccine_id: number;
         date: string;
         remarks?: string;
+    }
+
+    interface Appointment {
+        id: number;
+        date: string;
+        purpose: string;
+        status: string;
+        pet_name: string;
+        owner_name: string;
+        owner_email: string;
+        assigned_vet?: string;
+        pet_image_url?: string;
+        pet_breed: string;
+        pet_gender: string;
+        pet_age?: number;
     }
 
     interface Vaccine {
@@ -190,6 +207,29 @@
     function formatDate(dateString: string): string {
         return new Date(dateString).toLocaleDateString();
     }
+
+    function formatDateTime(dateString: string): string {
+        return new Date(dateString).toLocaleString();
+    }
+
+    function getStatusColor(status: string): string {
+        switch (status) {
+            case 'booked': return '#ffc107';
+            case 'confirmed': return '#17a2b8';
+            case 'completed': return '#28a745';
+            case 'rejected': return '#dc3545';
+            case 'cancelled': return '#6c757d';
+            default: return '#6c757d';
+        }
+    }
+
+    function getStatusText(status: string): string {
+        return status.charAt(0).toUpperCase() + status.slice(1);
+    }
+
+    function viewAppointment(appointmentId: number) {
+        goto(`/appointments/${appointmentId}`);
+    }
 </script>
 
 <svelte:head>
@@ -306,6 +346,45 @@
                 {:else}
                     <div class="no-vaccinations">
                         No vaccination records yet.
+                    </div>
+                {/if}
+            </div>
+
+            <div class="appointments-section">
+                <div class="section-header">
+                    <h2>Appointment History {pet.total_appointments ? `(${pet.total_appointments})` : ''}</h2>
+                    <button class="book-appointment-btn" on:click={() => goto('/appointments')}>
+                        Book New Appointment
+                    </button>
+                </div>
+
+                {#if pet.appointments && pet.appointments.length > 0}
+                    <div class="appointments-list">
+                        {#each pet.appointments as appointment (appointment.id)}
+                            <div class="appointment-card" on:click={() => viewAppointment(appointment.id)} role="button" tabindex="0" on:keydown={(e) => e.key === 'Enter' && viewAppointment(appointment.id)}>
+                                <div class="appointment-header">
+                                    <div class="appointment-status" style="background-color: {getStatusColor(appointment.status)}">
+                                        {getStatusText(appointment.status)}
+                                    </div>
+                                    <div class="appointment-date">
+                                        {formatDateTime(appointment.date)}
+                                    </div>
+                                </div>
+                                <div class="appointment-content">
+                                    <h4 class="appointment-purpose">{appointment.purpose}</h4>
+                                    {#if appointment.assigned_vet}
+                                        <p class="appointment-vet">Assigned Vet: {appointment.assigned_vet}</p>
+                                    {/if}
+                                </div>
+                                <div class="appointment-footer">
+                                    <span class="view-details">Click to view details →</span>
+                                </div>
+                            </div>
+                        {/each}
+                    </div>
+                {:else}
+                    <div class="no-appointments">
+                        No appointment records yet.
                     </div>
                 {/if}
             </div>
@@ -588,7 +667,7 @@
         font-size: 1.5rem;
     }
 
-    .add-vaccination-btn {
+    .add-vaccination-btn, .book-appointment-btn {
         background: linear-gradient(135deg, #daa520 0%, #b8860b 100%);
         color: white;
         border: none;
@@ -629,11 +708,86 @@
         font-style: italic;
     }
 
-    .no-vaccinations {
+    .no-vaccinations, .no-appointments {
         text-align: center;
         padding: 2rem;
         color: #666;
         font-style: italic;
+    }
+
+    .appointments-section {
+        padding: 2rem;
+        border-top: 1px solid #f3e8a6;
+    }
+
+    .appointments-list {
+        display: grid;
+        gap: 1rem;
+    }
+
+    .appointment-card {
+        background: #fff;
+        border: 2px solid #f3e8a6;
+        border-radius: 12px;
+        padding: 1.5rem;
+        cursor: pointer;
+        transition: all 0.2s ease;
+        box-shadow: 0 2px 4px rgba(184, 134, 11, 0.1);
+    }
+
+    .appointment-card:hover {
+        border-color: #daa520;
+        box-shadow: 0 4px 8px rgba(184, 134, 11, 0.2);
+        transform: translateY(-2px);
+    }
+
+    .appointment-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 1rem;
+    }
+
+    .appointment-status {
+        color: white;
+        padding: 0.25rem 0.75rem;
+        border-radius: 20px;
+        font-size: 0.875rem;
+        font-weight: 600;
+        text-transform: uppercase;
+    }
+
+    .appointment-date {
+        color: #666;
+        font-weight: 600;
+        font-size: 0.95rem;
+    }
+
+    .appointment-content {
+        margin-bottom: 1rem;
+    }
+
+    .appointment-purpose {
+        margin: 0 0 0.5rem 0;
+        color: #333;
+        font-size: 1.1rem;
+        font-weight: 600;
+    }
+
+    .appointment-vet {
+        margin: 0;
+        color: #b8860b;
+        font-weight: 500;
+    }
+
+    .appointment-footer {
+        text-align: right;
+    }
+
+    .view-details {
+        color: #daa520;
+        font-size: 0.9rem;
+        font-weight: 500;
     }
 
     .modal-overlay {
@@ -752,6 +906,26 @@
         .pet-header {
             flex-direction: column;
             gap: 1rem;
+        }
+
+        .appointment-header {
+            flex-direction: column;
+            align-items: flex-start;
+            gap: 0.5rem;
+        }
+
+        .appointment-date {
+            font-size: 0.875rem;
+        }
+
+        .section-header {
+            flex-direction: column;
+            align-items: flex-start;
+            gap: 1rem;
+        }
+
+        .add-vaccination-btn, .book-appointment-btn {
+            width: 100%;
         }
     }
 </style>

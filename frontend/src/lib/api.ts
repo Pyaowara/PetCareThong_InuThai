@@ -92,9 +92,16 @@ export const apiJson = async (endpoint: string, options: RequestInit = {}) => {
     if (!response.ok) {
         let errorData;
         try {
-            errorData = await response.json();
+            // Clone the response so we can read it multiple times if needed
+            const responseClone = response.clone();
+            errorData = await responseClone.json();
         } catch {
-            errorData = await response.text();
+            // If JSON parsing fails, try to get text from the original response
+            try {
+                errorData = await response.text();
+            } catch {
+                errorData = { error: `HTTP ${response.status}: ${response.statusText}` };
+            }
         }
         throw errorData;
     }
@@ -124,8 +131,19 @@ export const apiFormData = async (endpoint: string, formData: FormData, options:
         const response = await fetch(url, config);
         
         if (!response.ok) {
-            const errorData = await response.text();
-            throw new Error(`HTTP ${response.status}: ${errorData}`);
+            let errorData;
+            try {
+                // Try to parse as JSON first
+                errorData = await response.json();
+            } catch {
+                // If JSON parsing fails, get text
+                try {
+                    errorData = await response.text();
+                } catch {
+                    errorData = `HTTP ${response.status}: ${response.statusText}`;
+                }
+            }
+            throw new Error(typeof errorData === 'string' ? errorData : JSON.stringify(errorData));
         }
         
         return response.json();

@@ -303,7 +303,7 @@
         </div>
     {/if}
 
-    {#if error}
+    {#if error && !showProfileModal && !editingUser}
         <div class="error-message">{error}</div>
     {/if}
 
@@ -541,7 +541,9 @@
                             </div>
                         {/if}
                     </div>
-                    
+                    {#if error}
+                        <div class="error-message">{error}</div>
+                    {/if}
                     <div class="form-actions">
                         <button type="button" class="cancel-btn" on:click={() => { showProfileModal = false; resetForm(); }}>
                             Cancel

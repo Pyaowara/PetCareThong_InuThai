@@ -474,28 +474,6 @@ class VaccinatedDetailView(APIView):
         except PermissionError as e:
             return Response({'error': str(e)}, status=status.HTTP_401_UNAUTHORIZED)
     
-    def put(self, request, vaccination_id):
-        try:
-            user_service = get_user_service(request)
-            user_service.check_authentication()
-
-            if not user_service.is_staff() and not user_service.is_vet():
-                return Response({'error': 'Staff or vet access required to update vaccination records'}, status=status.HTTP_403_FORBIDDEN)
-
-            vaccination = Vaccinated.objects.get(id=vaccination_id)
-            serializer = VaccinatedSerializer(vaccination, data=request.data, partial=True)
-            
-            if serializer.is_valid():
-                updated_vaccination = serializer.save()
-                return Response({
-                    'message': 'Vaccination record updated successfully',
-                    'vaccination': VaccinatedSerializer(updated_vaccination).data
-                }, status=status.HTTP_200_OK)
-            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
-        except Vaccinated.DoesNotExist:
-            return Response({'error': 'Vaccination record not found'}, status=status.HTTP_404_NOT_FOUND)
-        except PermissionError as e:
-            return Response({'error': str(e)}, status=status.HTTP_401_UNAUTHORIZED)
         
 """End of Pattrapol Yaowaraj 66070148"""
 
@@ -550,6 +528,7 @@ class ServiceView(APIView):
             return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
         except PermissionError as e:
             return Response({'error': str(e)}, status=status.HTTP_401_UNAUTHORIZED)
+
     
 class UpdateServiceView(APIView):
     # Get a service
@@ -576,11 +555,10 @@ class UpdateServiceView(APIView):
         try:
             user_service = get_user_service(request)
             user_service.check_authentication()
+            service = Service.objects.get(id=service_id)
             if not user_service.is_staff():
                 return Response({'error': 'Permission denied'}, status=status.HTTP_403_FORBIDDEN)
             service = Service.objects.get(id=service_id)
-            if service.title in ['getVaccine', 'Neutering/Spaying', 'Others']:
-                return Response({'error': 'Can edit service getVaccine, Neutering/Spaying and Other'}, status=status.HTTP_403_FORBIDDEN)
             serializer = ServiceSerializer(service, data=request.data, partial=True)
             if serializer.is_valid():
                 serializer.save()
@@ -593,11 +571,6 @@ class UpdateServiceView(APIView):
             return Response({'error': str(e)}, status=status.HTTP_401_UNAUTHORIZED)
         except Service.DoesNotExist:
             return Response({'error': 'service not found'}, status=status.HTTP_404_NOT_FOUND)
-        except Exception as e:
-            return Response({
-                'error': 'Failed to update service',
-                'details': str(e)
-            }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
         
     
     # Delete Service
@@ -702,7 +675,7 @@ class AppointmentDetailView(APIView):
             
             appointment = Appointment.objects.get(id=appointment_id)
             
-            if (user_service.is_vet() and (appointment.assigned_vet != user_service.get_user()) or (user_service.is_client() and (appointment.user != user_service.get_user()))):
+            if (user_service.is_client() and (appointment.user != user_service.get_user())):
                 return Response({'error': 'Permission denied'}, status=status.HTTP_403_FORBIDDEN)
 
             serializer = AppointmentSerializer(appointment)

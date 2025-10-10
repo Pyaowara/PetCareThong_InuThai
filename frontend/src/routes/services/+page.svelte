@@ -61,7 +61,7 @@
             resetForm();
             showCreateModal = false;
         } catch (err) {
-            error = err instanceof Error ? err.message : 'Failed to create vaccine';
+            error = err instanceof Error ? `Failed to create service: ${err.message}` : `Failed to create service: ${JSON.stringify(err)}`;
         }
     }
 
@@ -77,7 +77,7 @@
             resetForm();
             editingService = null;
         } catch (err) {
-            error = err instanceof Error ? err.message : 'Failed to update vaccine';
+            error = err instanceof Error ? `Failed to update service: ${err.message}` : `Failed to update service: ${JSON.stringify(err)}`;
         }
     }
 
@@ -143,7 +143,7 @@
         </div>
     </div>
 
-    {#if error}
+    {#if error && !showCreateModal && !editingService}
         <div class="error-message">{error}</div>
     {/if}
 
@@ -193,7 +193,7 @@
                             type="text"
                             id="serviceName"
                             bind:value={serviceForm.title}
-                            placeholder="e.g., Rabies, Distemper, Parvovirus"
+                            placeholder="Input service name..."
                             required
                         />
                     </div>
@@ -207,7 +207,9 @@
                             rows="4"
                         ></textarea>
                     </div>
-                    
+                    {#if error}
+                        <div class="error-message">{error}</div>
+                    {/if}
                     <div class="form-actions">
                         <button type="button" class="cancel-btn" on:click={resetForm}>
                             Cancel

@@ -292,12 +292,20 @@ class ServiceSerializer(serializers.ModelSerializer):
     class Meta:
         model = Service
         fields = ['id', 'title', 'description']
-    def validate_title(self, value):
-        if Service.objects.filter(title__iexact=value):
-            raise serializers.ValidationError(f'{value} has already used')
-        elif value.lower in ['getvaccine', 'neutering/spaying', 'other']:
-            raise serializers.ValidationError(f'{value} is a main service')
-        return value
+    def create(self, validated_data):
+        title = validated_data.get('title', '').strip()
+        if Service.objects.filter(title__iexact=title).exists() or title.lower() not in ['getvaccine', 'neutering/spaying', 'other']:
+            raise serializers.ValidationError({'title': f'{title} has already used'})
+        service = Service.objects.create(**validated_data)
+        return service
+    def update(self, instance, validated_data):
+        title = validated_data.get('title', '').strip()
+        if title != instance.title and (title.lower() not in ['getvaccine', 'neutering/spaying', 'other'] or Service.objects.filter(title__iexact=title).exists()):
+            raise serializers.ValidationError({'title': f'{title} has already used'})
+        for attr, value in validated_data.items():
+            setattr(instance, attr, value)
+        instance.save()
+        return instance
 
 class BookAppointmentSerializer(serializers.ModelSerializer):
     user = serializers.PrimaryKeyRelatedField(queryset=User.objects.filter(role='client'), required=False)
@@ -470,8 +478,6 @@ class TreatmentSerializer(serializers.ModelSerializer):
 
         if not appointment:
             raise serializers.ValidationError({'appointment': 'Appointment is required for treatment.'})
-        if appointment.status != 'confirmed':
-            raise serializers.ValidationError({'appointment': 'Treatment can only be added to confirmed appointments.'})
         
         with transaction.atomic():
             vaccine = validated_data.get('vaccine')
@@ -483,7 +489,7 @@ class TreatmentSerializer(serializers.ModelSerializer):
                 Vaccinated.objects.create(
                     pet=appointment.pet,
                     vaccine=vaccine,
-                    date=appointment.date.date(),
+                    date=timezone.now().date(),
                     remarks=f'Vaccination administered during appointment ({appointment.purpose}).'
                 )
             if service.title.lower() == 'neutering/spaying':

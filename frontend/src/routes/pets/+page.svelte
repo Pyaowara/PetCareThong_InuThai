@@ -54,7 +54,7 @@
     async function loadUsers() {
         try {
             const { userApi } = await import('$lib/apiServices');
-            users = await userApi.getUsers();
+            users = await userApi.getUsersByRole('client');
         } catch (err) {
             console.error('Failed to load users:', err);
         }

@@ -193,6 +193,8 @@ class PetSerializer(serializers.ModelSerializer):
             if owner_id:
                 try:
                     owner = User.objects.get(id=owner_id)
+                    if owner.role != 'client':
+                        raise serializers.ValidationError({'owner_id': 'The specified user is not a client.'})
                     validated_data['user'] = owner
                 except User.DoesNotExist:
                     raise serializers.ValidationError({'owner_id': 'Invalid user ID provided.'})
@@ -294,13 +296,13 @@ class ServiceSerializer(serializers.ModelSerializer):
         fields = ['id', 'title', 'description']
     def create(self, validated_data):
         title = validated_data.get('title', '').strip()
-        if Service.objects.filter(title__iexact=title).exists() or title.lower() not in ['getvaccine', 'neutering/spaying', 'other']:
+        if Service.objects.filter(title__iexact=title).exists():
             raise serializers.ValidationError({'title': f'{title} has already used'})
         service = Service.objects.create(**validated_data)
         return service
     def update(self, instance, validated_data):
         title = validated_data.get('title', '').strip()
-        if title != instance.title and (title.lower() not in ['getvaccine', 'neutering/spaying', 'other'] or Service.objects.filter(title__iexact=title).exists()):
+        if title != instance.title and (title.lower() in ['getvaccine', 'neutering/spaying', 'others'] or Service.objects.filter(title__iexact=title).exists()):
             raise serializers.ValidationError({'title': f'{title} has already used'})
         for attr, value in validated_data.items():
             setattr(instance, attr, value)

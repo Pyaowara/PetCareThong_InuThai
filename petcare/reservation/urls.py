@@ -25,6 +25,8 @@ urlpatterns = [
     path('auth/logout/', views.LogoutView.as_view(), name='logout'),
     path('auth/profile/', views.UserProfileView.as_view(), name='user_profile'),
 
+# Tee
+
     #Service
     path('services/', views.ServiceView.as_view(), name='service_create'),
     path('services/<int:service_id>/', views.UpdateServiceView.as_view(), name='service_manage'),

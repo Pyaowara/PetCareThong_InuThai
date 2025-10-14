@@ -614,7 +614,7 @@ class BookAppointmentView(APIView):
             if serializer.is_valid():
                 app = serializer.save()
                 email_service = EmailService()
-                if app.data.assigned_vet:
+                if not app.assigned_vet:
                     send_email_async(email_service.send_appointment_notification, app)
                 else:
                     send_email_async(email_service.send_appointment_status_update, app, "confirmed")

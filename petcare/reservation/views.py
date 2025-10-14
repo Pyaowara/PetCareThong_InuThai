@@ -613,10 +613,11 @@ class BookAppointmentView(APIView):
             serializer = BookAppointmentSerializer(data=request.data, context={'request': request})
             if serializer.is_valid():
                 app = serializer.save()
-
                 email_service = EmailService()
-                send_email_async(email_service.send_appointment_notification, app)
-                
+                if app.data.assigned_vet:
+                    send_email_async(email_service.send_appointment_notification, app)
+                else:
+                    send_email_async(email_service.send_appointment_status_update, app, "confirmed")
                 return Response(BookAppointmentSerializer(app).data, status=status.HTTP_201_CREATED)
             return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
         except PermissionError as e:

@@ -475,12 +475,12 @@ class UserViewByRole(APIView):
             if not user_service.is_staff() and not user_service.is_vet():
                 return Response({'error': 'Staff access required'}, status=status.HTTP_403_FORBIDDEN)
 
-            users = User.objects.all()
+            users = User.objects.filter(active=True)
             if role in ['client', 'staff', 'vet']:
                 users = users.filter(role=role)
                 serializer = UserSerializer(users, many=True)
                 return Response(serializer.data)
-            return Response({'error': f'Role {role} not found'}, status=status.HTTP_403_FORBIDDEN)
+            return Response({'error': f'Role {role} not found'}, status=status.HTTP_404_NOT_FOUND)
         except PermissionError as e:
             return Response({'error': str(e)}, status=status.HTTP_401_UNAUTHORIZED)
 
@@ -549,7 +549,7 @@ class UpdateServiceView(APIView):
                 return Response({
                     'message': f'Update service_id {service_id} success',
                     'services': serializer.data
-                }, status=status.HTTP_201_CREATED)
+                }, status=status.HTTP_200_OK)
             return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
         except PermissionError as e:
             return Response({'error': str(e)}, status=status.HTTP_401_UNAUTHORIZED)
@@ -566,8 +566,8 @@ class UpdateServiceView(APIView):
                 return Response({'error': 'Permission denied'}, status=status.HTTP_403_FORBIDDEN)
             
             service = Service.objects.get(id=service_id)
-            if service.title in ['getVaccine', 'Neutering/Spaying', 'Others']:
-                return Response({'error': 'Can delete service getVaccine, Neutering/Spaying and Other'}, status=status.HTTP_403_FORBIDDEN)
+            if service.title.lower() in ['getvaccine', 'neutering/spaying', 'others']:
+                return Response({'error': 'Can delete service getVaccine, Neutering/Spaying and Others'}, status=status.HTTP_403_FORBIDDEN)
             service_title = service.title
             service.delete()
             response_message = f'Service {service_title} deleted successfully'
@@ -579,13 +579,10 @@ class UpdateServiceView(APIView):
             return Response({'error': str(e)}, status=status.HTTP_401_UNAUTHORIZED)
         except Service.DoesNotExist:
             return Response({'error': 'service not found'}, status=status.HTTP_404_NOT_FOUND)
-        except Exception as e:
-            return Response({
-                'error': 'Failed to delete service',
-                'details': str(e)
-            }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
         
 class BookAppointmentView(APIView):
+
+    # Book Appointment
     def post(self, request):
         try:
             user_service = get_user_service(request)
@@ -605,7 +602,7 @@ class BookAppointmentView(APIView):
             return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
         except PermissionError as e:
             return Response({'error': str(e)}, status=status.HTTP_401_UNAUTHORIZED)
-
+    # Edit Appointment
     def put(self, request, appointment_id):
         try:
             user_service = get_user_service(request)
@@ -615,7 +612,7 @@ class BookAppointmentView(APIView):
             serializer = BookAppointmentSerializer(appointment, data=request.data, partial=True, context={'request': request})
             if serializer.is_valid():
                 app = serializer.save()
-                return Response(BookAppointmentSerializer(app).data, status=status.HTTP_201_CREATED)
+                return Response(BookAppointmentSerializer(app).data, status=status.HTTP_200_OK)
             return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
         except Appointment.DoesNotExist:
             return Response({'error': 'Appointment not found'}, status=status.HTTP_404_NOT_FOUND)
@@ -735,6 +732,7 @@ class TreatmentView(APIView):
 
 
 class UpdateTreatmentView(APIView):
+
     def post(self, request, appointment_id):
         try:
             user_service = get_user_service(request)
@@ -748,7 +746,6 @@ class UpdateTreatmentView(APIView):
                 return Response({'error': 'Can\'t add treatment to appointment that not confirmed'}, status=status.HTTP_403_FORBIDDEN)
             serializer = UpdateTreatmentSerializer(data=request.data, context={'appointment_id': appointment.id})
             if serializer.is_valid():
-                
                 treatments = serializer.save()
                 return Response({
                     'message': 'Treatment record(s) created successfully',
@@ -774,7 +771,7 @@ class UserHistoryView(APIView):
             treatment_serializer = UserHistorySerializer(treatments, many=True)
             return Response({
                 'treatments': treatment_serializer.data
-            }, status=status.HTTP_200_OK)
+            })
         except Treatment.DoesNotExist:
             return Response({'error': 'Treatment not found'}, status=status.HTTP_404_NOT_FOUND)
         except Exception as e:

@@ -16,7 +16,6 @@ import environ
 BASE_DIR = Path(__file__).resolve().parent.parent
 
 env = environ.Env(
-    DEBUG=(bool, False),
     SECRET_KEY=(str, 'django-insecure-change-me-in-production'),
     ALLOWED_HOSTS=(list, []),
 )
@@ -30,7 +29,7 @@ environ.Env.read_env(BASE_DIR.parent / '.env')
 
 SECRET_KEY = env('SECRET_KEY')
 
-DEBUG = True
+DEBUG = False
 
 ALLOWED_HOSTS = env('ALLOWED_HOSTS')
 

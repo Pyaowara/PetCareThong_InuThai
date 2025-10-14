@@ -126,8 +126,6 @@ class UserUpdateSerializer(serializers.ModelSerializer):
             for field in restricted_fields:
                 if field in data:
                     del data[field]
-
-        data.pop('current_password', None)
         
         return data
 

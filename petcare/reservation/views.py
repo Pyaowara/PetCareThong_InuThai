@@ -11,8 +11,6 @@ from .services import *
 """Pattrapol Yaowaraj 66070148"""
 
 class UserView(APIView):
-    parser_classes = [MultiPartParser, JSONParser]
-    
     def get(self, request):
         try:
             user_service = get_user_service(request)
@@ -31,8 +29,6 @@ class UserView(APIView):
             return Response({'error': str(e)}, status=status.HTTP_401_UNAUTHORIZED)
 
 class UserDetailView(APIView):
-    parser_classes = [MultiPartParser, JSONParser]
-    
     def get(self, request, user_id):
         try:
             user_service = get_user_service(request)
@@ -151,8 +147,6 @@ class LogoutView(APIView):
         return Response({'message': 'Logout successful'}, status=status.HTTP_200_OK)
 
 class RegisterView(APIView):
-    parser_classes = [MultiPartParser, JSONParser]
-    
     def post(self, request):
         serializer = UserSerializer(data=request.data)
         if serializer.is_valid():
@@ -184,8 +178,6 @@ class UserProfileView(APIView):
             return Response({'error': str(e)}, status=status.HTTP_401_UNAUTHORIZED)
 
 class PetView(APIView):
-    parser_classes = [MultiPartParser, JSONParser]
-
     def get(self, request):
         try:
             user_service = get_user_service(request)
@@ -222,8 +214,6 @@ class PetView(APIView):
             return Response({'error': str(e)}, status=status.HTTP_401_UNAUTHORIZED)
 
 class PetDetailView(APIView):
-    parser_classes = [MultiPartParser, JSONParser]
-    
     def get(self, request, pet_id):
         try:
             user_service = get_user_service(request)
@@ -310,7 +300,6 @@ class PetDetailView(APIView):
             }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 class VaccineView(APIView):
-    
     def get(self, request):
         try:
             user_service = get_user_service(request)
@@ -342,7 +331,6 @@ class VaccineView(APIView):
             return Response({'error': str(e)}, status=status.HTTP_401_UNAUTHORIZED)
 
 class VaccineDetailView(APIView):
-    
     def get(self, request, vaccine_id):
         try:
             user_service = get_user_service(request)
@@ -406,7 +394,6 @@ class VaccineDetailView(APIView):
             return Response({'error': str(e)}, status=status.HTTP_401_UNAUTHORIZED)
 
 class VaccinatedView(APIView):
-    
     def get(self, request):
         try:
             user_service = get_user_service(request)
@@ -456,7 +443,6 @@ class VaccinatedView(APIView):
             return Response({'error': str(e)}, status=status.HTTP_401_UNAUTHORIZED)
 
 class VaccinatedDetailView(APIView):
-
     def get(self, request, vaccination_id):
         try:
             user_service = get_user_service(request)
@@ -499,8 +485,6 @@ class UserViewByRole(APIView):
             return Response({'error': str(e)}, status=status.HTTP_401_UNAUTHORIZED)
 
 class ServiceView(APIView):
-    parser_classes = [MultiPartParser, JSONParser]
-    
     # Get all service
     def get(self, request):
         try:
@@ -602,7 +586,6 @@ class UpdateServiceView(APIView):
             }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
         
 class BookAppointmentView(APIView):
-
     def post(self, request):
         try:
             user_service = get_user_service(request)
@@ -667,7 +650,6 @@ class AppointmentView(APIView):
 
         
 class AppointmentDetailView(APIView):
-    parser_classes = [MultiPartParser, JSONParser]
     # View AppointmentDetail
     def get(self, request, appointment_id):
         try:
@@ -738,7 +720,6 @@ class UpdateStatusAppointmentView(APIView):
             return Response({'error': str(e)}, status=status.HTTP_401_UNAUTHORIZED)
 
 class TreatmentView(APIView):
-    parser_classes = [MultiPartParser, JSONParser]
     def get(self, request, appointment_id):
         try:
             user_service = get_user_service(request)
@@ -754,8 +735,6 @@ class TreatmentView(APIView):
 
 
 class UpdateTreatmentView(APIView):
-    parser_classes = [MultiPartParser, JSONParser]
-
     def post(self, request, appointment_id):
         try:
             user_service = get_user_service(request)

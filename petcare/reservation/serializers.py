@@ -294,12 +294,14 @@ class ServiceSerializer(serializers.ModelSerializer):
     class Meta:
         model = Service
         fields = ['id', 'title', 'description']
+    # create service
     def create(self, validated_data):
         title = validated_data.get('title', '').strip()
         if Service.objects.filter(title__iexact=title).exists():
             raise serializers.ValidationError({'title': f'{title} has already used'})
         service = Service.objects.create(**validated_data)
         return service
+    # update service
     def update(self, instance, validated_data):
         title = validated_data.get('title', '').strip()
         if title != instance.title and (title.lower() in ['getvaccine', 'neutering/spaying', 'others'] or Service.objects.filter(title__iexact=title).exists()):
@@ -339,9 +341,8 @@ class BookAppointmentSerializer(serializers.ModelSerializer):
             if user_service.is_staff():
                 if not value:
                     raise serializers.ValidationError('Staff must assign a veterinarian (assigned_vet).')
-                else: 
-                    if value.role != 'vet':
-                        raise serializers.ValidationError('Assigned user is not a veterinarian.')
+                elif value.role != 'vet':
+                    raise serializers.ValidationError('Assigned user is not a veterinarian.')
             else:
                 if value is not None:
                     raise serializers.ValidationError('Cannot assign a veterinarian.')
@@ -351,16 +352,15 @@ class BookAppointmentSerializer(serializers.ModelSerializer):
         request = self.context.get('request', None)
         user_service = getattr(request, 'user_service', None) if request else None
         if user_service and user_service.is_staff():
-            user = self.initial_data.get('user')
-            if user:
+            owner = self.initial_data.get('user')
+            if owner:
                 try:
-                    user_obj = User.objects.get(pk=user)
-                    if value.user.id != user_obj.id:
+                    user = User.objects.get(pk=owner)
+                    if value.user.id != user.id:
                         raise serializers.ValidationError('Pet owner does not match selected user.')
                 except User.DoesNotExist:
                     raise serializers.ValidationError('Selected user does not exist.')
         return value
-
     def create(self, validated_data):
         request = self.context.get('request', None)
         user_service = getattr(request, 'user_service', None) if request else None
@@ -404,7 +404,6 @@ class BookAppointmentSerializer(serializers.ModelSerializer):
             if status == 'confirmed' and not validated_data.get('assigned_vet'):
                 raise serializers.ValidationError({'assigned_vet': 'Staff must assign a veterinarian (assigned_vet) when status is confirmed.'})
 
-
         for attr, value in validated_data.items():
             setattr(instance, attr, value)
         instance.save()
@@ -441,7 +440,6 @@ class UpdateStatusSerializer(serializers.ModelSerializer):
     class Meta:
         model = Appointment
         fields = ['id', 'status', 'assigned_vet']
-
     def validate(self, data):
         user_service = self.context.get('user_service')
         appointment = self.instance
@@ -453,12 +451,16 @@ class UpdateStatusSerializer(serializers.ModelSerializer):
             if data.get('assigned_vet'):
                 raise serializers.ValidationError('Clients cannot assign a vet.')
 
-            if data.get('status') not in ['cancelled', 'booked']:
-                raise serializers.ValidationError('Clients can only update status to "cancelled" or "booked".')
+            if data.get('status') != 'cancelled':
+                raise serializers.ValidationError('Clients can only update status to "cancelled".')
 
         elif user_service.is_staff():
             if data.get('status') == 'confirmed' and not data.get('assigned_vet'):
                 raise serializers.ValidationError('Cannot confirm without assigning a vet.')
+            if data.get('status') != 'confirmed' and data.get('assigned_vet'):
+                raise serializers.ValidationError('Can only assign a vet when status is "confirmed".')
+            if data.get('assigned_vet') and data.get('assigned_vet').role != 'vet':
+                raise serializers.ValidationError('Assigned user is not a veterinarian.')
         else:
             raise serializers.ValidationError('Permission denied.')
 
@@ -477,7 +479,6 @@ class TreatmentSerializer(serializers.ModelSerializer):
         appointment = validated_data.get('appointment')
         service = validated_data.get('service')
         
-
         if not appointment:
             raise serializers.ValidationError({'appointment': 'Appointment is required for treatment.'})
         

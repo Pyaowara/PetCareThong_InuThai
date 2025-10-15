@@ -187,7 +187,7 @@ class PetView(APIView):
                 pets = Pet.objects.all().select_related('user')
             else:
                 pets = Pet.objects.filter(user=user_service.get_user())
-            
+            pets = pets.filter(user__active=True)
             serializer = PetListSerializer(pets, many=True)
             return Response(serializer.data)
         except PermissionError as e:

@@ -34,9 +34,6 @@ class User(models.Model):
     def __str__(self):
         return self.full_name
 
-    class Meta:
-        db_table = 'reservation_user'
-
 
 class Vaccine(models.Model):
     name = models.CharField(max_length=100)
